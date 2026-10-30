@@ -1,0 +1,10 @@
+{
+  "name": "Realidad aumentada · IPESfa",
+  "short_name": "RA IPESfa",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#faf7f0",
+  "theme_color": "#14345f",
+  "lang": "es-AR",
+  "icons": [{ "src": "img/icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

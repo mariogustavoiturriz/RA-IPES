@@ -1,0 +1,10 @@
+{
+  "experiencias": [
+    {
+      "titulo": "Geometría en movimiento",
+      "descripcion": "Ejemplo: una lámina con video y otra con un icosaedro en 3D",
+      "archivo": "experiencias/geometria-en-movimiento.zip",
+      "imagen": "experiencias/geometria-en-movimiento.jpg"
+    }
+  ]
+}

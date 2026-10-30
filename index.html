@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Realidad aumentada · IPESfa</title>
+<meta name="description" content="Sistema libre para crear y ver experiencias de realidad aumentada desde el navegador.">
+<meta name="theme-color" content="#14345f">
+<link rel="icon" href="img/icono.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  /* Estilos mínimos escritos acá adentro: si el navegador no puede cargar los archivos
+     de la carpeta (pasa en los celulares), al menos se lee el aviso de abajo. */
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: #faf7f0; color: #1d2430; line-height: 1.5; }
+  .oculto { display: none !important; }
+  #sin-archivos { display: none; max-width: 660px; margin: 0 auto; padding: 22px 16px; }
+  #sin-archivos .caja { background: #fff; border: 1px solid #e3ded2; border-radius: 14px; padding: 18px; }
+  #sin-archivos h2 { font-size: 21px; margin: 0 0 10px; }
+  #sin-archivos li { margin-bottom: 10px; }
+  #sin-archivos code { background: #f0ece2; padding: 1px 5px; border-radius: 4px; }
+</style>
+<link rel="stylesheet" href="css/estilo.css">
+<style>
+  .heroe { display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; align-items: center; margin: 10px 0 8px; }
+  @media (max-width: 760px) { .heroe { grid-template-columns: 1fr; } }
+  .heroe img { width: 100%; border-radius: 14px; box-shadow: var(--sombra); transform: rotate(-2deg); }
+  .opcion { display: grid; gap: 8px; align-content: start; text-decoration: none; color: inherit; }
+  .opcion .ico { font-size: 34px; }
+  .opcion:hover { border-color: var(--azul-2); }
+  ol.pasos-uso li { margin-bottom: 6px; }
+  #qr svg { width: 200px; height: 200px; background: #fff; border-radius: 8px; }
+</style>
+<script src="js/archivos.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="lib/qrcode.js"></script>
+</head>
+<body>
+<header class="barra">
+  <a class="marca" href="index.html"><img src="img/icono.svg" alt="">RA · IPESfa</a>
+  <nav><a href="index.html" aria-current="page">Inicio</a><a href="visor.html">Ver</a><a href="creador.html">Crear</a></nav>
+</header>
+<main>
+  <section class="heroe">
+    <div>
+      <h1>Realidad aumentada para el aula</h1>
+      <p class="bajada">Apuntás la cámara a una lámina y aparece un video, una imagen, un modelo 3D o un audio encima. Lo puede usar cualquier docente o estudiante del IPESfa, desde el navegador, sin instalar nada y sin cuentas.</p>
+      <div class="fila">
+        <a class="btn primario grande" href="visor.html">📷 Ver experiencias</a>
+        <a class="btn grande" href="creador.html">✏️ Crear una</a>
+      </div>
+    </div>
+    <img src="ejemplos/lamina-1-geometria.jpg" alt="Lámina de ejemplo">
+  </section>
+
+  <h2>¿Cómo funciona?</h2>
+  <div class="grilla">
+    <div class="tarjeta opcion"><span class="ico">🖼️</span><h3>1. Creás</h3><p class="suave" style="margin:0">En el creador elegís la imagen de la lámina y lo que querés que aparezca encima. Se genera un paquete .zip.</p></div>
+    <div class="tarjeta opcion"><span class="ico">📦</span><h3>2. Compartís</h3><p class="suave" style="margin:0">El .zip se pasa como cualquier archivo: Drive, mail, WhatsApp, pendrive o el aula virtual. Las láminas se imprimen o se proyectan.</p></div>
+    <div class="tarjeta opcion"><span class="ico">📱</span><h3>3. Lo ven</h3><p class="suave" style="margin:0">Abren el visor, eligen el .zip y apuntan la cámara a la lámina. Funciona en celulares Android, iPhone y notebooks con cámara.</p></div>
+  </div>
+
+  <div class="grilla" style="margin-top:14px">
+    <section class="tarjeta" id="caja-kit">
+      <h3>💻 Usarlo sin internet</h3>
+      <p class="suave chico">Descargá el sistema completo, descomprimilo <b>en la notebook</b> y abrí <b>index.html</b> con doble clic (Chrome, Edge o Firefox). No se instala nada.</p>
+      <button class="btn primario" id="kit">⬇️ Descargar el sistema (.zip)</button>
+      <p class="chico suave" id="kit-estado"></p>
+      <p class="chico suave" style="margin-bottom:0"><b>En el celular esta carpeta no sirve</b> (Android no deja que una página local use sus archivos ni la cámara). Ahí el camino es el de al lado: entrar una vez al sitio y queda guardado.</p>
+    </section>
+    <section class="tarjeta" id="caja-qr">
+      <h3>📲 Abrilo en el celular</h3>
+      <p class="suave chico">Proyectá este código en clase para que lo escaneen. Con entrar una vez, el celular guarda el sistema y después funciona sin conexión. Si lo agregan a la pantalla de inicio, queda como una aplicación.</p>
+      <div id="qr"></div>
+    </section>
+    <section class="tarjeta">
+      <h3>🧪 Probalo ya</h3>
+      <p class="suave chico">Abrí o imprimí una de estas láminas, entrá al visor, elegí <b>Geometría en movimiento</b> en la galería y apuntá la cámara.</p>
+      <div class="fila"><a class="btn chico" href="ejemplos/lamina-1-geometria.jpg" target="_blank">Lámina 1 (video)</a><a class="btn chico" href="ejemplos/lamina-2-solidos.jpg" target="_blank">Lámina 2 (3D)</a></div>
+      <p class="chico suave" id="ej-offline" style="margin-bottom:0"></p>
+    </section>
+  </div>
+</main>
+<footer class="pie">Sistema de realidad aumentada del IPES "Florentino Ameghino" · Ushuaia · Software libre (MindAR y A-Frame, licencia MIT)</footer>
+<script>
+(function () {
+  "use strict";
+  const online = location.protocol === "http:" || location.protocol === "https:";
+  if (online) {
+    const qr = qrcode(0, "M"); qr.addData(location.href.replace(/index\.html.*$/, "").replace(/[?#].*$/, "")); qr.make();
+    document.getElementById("qr").innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  } else {
+    document.getElementById("caja-qr").classList.add("oculto");
+    document.getElementById("caja-kit").innerHTML = "<h3>💻 Estás usando la copia sin internet</h3><p class='suave chico'>Todo funciona desde esta carpeta. Para abrir experiencias, entrá a Ver y elegí el .zip.</p>";
+    document.getElementById("ej-offline").innerHTML = "Sin internet la galería no aparece: el paquete de ejemplo está en la carpeta <b>experiencias</b>, abrilo con el botón del visor.";
+  }
+
+  const btn = document.getElementById("kit"), est = document.getElementById("kit-estado");
+  if (btn) btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      const zip = new JSZip(), raiz = zip.folder("RA-IPESfa");
+      let n = 0;
+      const todos = ARCHIVOS_APP.concat(ARCHIVOS_KIT_EXTRA);
+      for (const ruta of todos) {
+        est.textContent = "Preparando… " + Math.round(100 * n++ / todos.length) + "%";
+        const r = await fetch(ruta);
+        if (!r.ok) throw new Error("No se pudo bajar " + ruta);
+        raiz.file(ruta, await r.arrayBuffer());
+      }
+      raiz.file("ABRIR-ESTO.txt",
+        "SISTEMA DE REALIDAD AUMENTADA - IPESfa\r\n\r\n" +
+        "EN LA NOTEBOOK (es para lo que sirve esta carpeta)\r\n" +
+        "  Abri index.html con doble clic (Chrome, Edge o Firefox).\r\n" +
+        "  No hace falta internet ni instalar nada.\r\n" +
+        "  Cuando el navegador pida permiso para la camara, aceptalo.\r\n" +
+        "  Si preferis un solo archivo: visor-un-archivo.html o creador-un-archivo.html.\r\n\r\n" +
+        "EN EL CELULAR (esta carpeta NO sirve)\r\n" +
+        "  Android no deja que una pagina guardada en el telefono use los demas\r\n" +
+        "  archivos de su carpeta, y tampoco le da permiso de camara.\r\n" +
+        "  Entra UNA VEZ al sitio publicado, con internet. Queda guardado en el\r\n" +
+        "  telefono y despues abre sin conexion, hasta en modo avion.\r\n" +
+        "  Conviene agregarlo a la pantalla de inicio: queda como una app mas.\r\n");
+      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "RA-IPESfa-sin-internet.zip"; a.click();
+      est.textContent = "Listo (" + (blob.size / 1048576).toFixed(1) + " MB).";
+    } catch (e) { est.textContent = "Error: " + e.message; }
+    btn.disabled = false;
+  };
+})();
+</script>
+<div id="sin-archivos">
+  <div class="caja">
+    <h2>Así no se puede abrir en el celular</h2>
+    <p>Android no deja que una página guardada en el teléfono use los demás archivos de su carpeta. Por eso la ves sin formato y los botones no responden. En la notebook, en cambio, anda bien.</p>
+    <p><b>En el celular tenés dos caminos:</b></p>
+    <ol>
+      <li><b>El recomendado:</b> entrá una vez al sitio publicado, con internet. Queda guardado en el teléfono y de ahí en adelante abre sin conexión, incluso en modo avión. Si lo agregás a la pantalla de inicio, queda como una aplicación más.</li>
+      <li>Abrir <code>visor-un-archivo.html</code> o <code>creador-un-archivo.html</code>, que están en esta misma carpeta y traen todo adentro. Vas a ver la pantalla bien, pero la cámara igual necesita que la página venga de internet: el teléfono no le da permiso a un archivo suelto.</li>
+    </ol>
+  </div>
+</div>
+<script>
+/* Si los archivos de la carpeta no se cargaron, mostramos el aviso en vez de una página muerta. */
+window.addEventListener("load", function () {
+  var jsOk = (typeof JSZip !== "undefined");
+  var barra = document.querySelector("header.barra");
+  var cssOk = barra && getComputedStyle(barra).backgroundColor === "rgb(20, 52, 95)";
+  if (jsOk && cssOk) return;
+  var sin = document.getElementById("sin-archivos");
+  document.querySelectorAll("main, header, footer").forEach(function (e) { e.style.display = "none"; });
+  sin.style.display = "block";
+});
+</script>
+</body>
+</html>

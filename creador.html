@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crear experiencia RA · IPESfa</title>
+<meta name="theme-color" content="#14345f">
+<link rel="icon" href="img/icono.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  /* Estilos mínimos escritos acá adentro: si el navegador no puede cargar los archivos
+     de la carpeta (pasa en los celulares), al menos se lee el aviso de abajo. */
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: #faf7f0; color: #1d2430; line-height: 1.5; }
+  .oculto { display: none !important; }
+  #sin-archivos { display: none; max-width: 660px; margin: 0 auto; padding: 22px 16px; }
+  #sin-archivos .caja { background: #fff; border: 1px solid #e3ded2; border-radius: 14px; padding: 18px; }
+  #sin-archivos h2 { font-size: 21px; margin: 0 0 10px; }
+  #sin-archivos li { margin-bottom: 10px; }
+  #sin-archivos code { background: #f0ece2; padding: 1px 5px; border-radius: 4px; }
+</style>
+<link rel="stylesheet" href="css/estilo.css">
+<style>
+  .lamina { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; margin-bottom: 16px; }
+  @media (max-width: 760px) { .lamina { grid-template-columns: 1fr; } }
+  .lamina .cabeza { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; }
+  .lamina .cabeza input { max-width: 340px; font-weight: 700; }
+  .lamina .cabeza .num { background: var(--azul); color: #fff; border-radius: 99px; width: 30px; height: 30px; display: grid; place-items: center; font-weight: 700; flex: none; }
+  .previa { position: relative; width: 100%; background: repeating-conic-gradient(#e9e6df 0 25%, #f6f4ef 0 50%) 0 0/20px 20px; border-radius: 10px; overflow: hidden; border: 1px solid var(--borde); }
+  .previa > img.fondo { display: block; width: 100%; height: auto; }
+  .previa .encima { position: absolute; left: 0; top: 0; transform-origin: center center; pointer-events: none; opacity: .92; outline: 2px dashed var(--ambar); }
+  .previa .icono3d { display: grid; place-items: center; font-size: 42px; background: rgba(20,52,95,.18); border-radius: 12px; outline: 2px dashed var(--ambar); }
+  .previa .vacia { aspect-ratio: 4/3; display: grid; place-items: center; text-align: center; color: var(--suave); padding: 16px; cursor: pointer; }
+  .controles { display: grid; gap: 10px; align-content: start; }
+  .controles .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .elegir { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .elegir .nombre { font-size: 14px; color: var(--suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .calidad { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 13px; font-weight: 700; }
+  .calidad.buena { background: rgba(30,142,90,.15); color: var(--ok); }
+  .calidad.media { background: rgba(241,184,15,.2); color: var(--aviso); }
+  .calidad.baja { background: rgba(192,57,43,.12); color: var(--mal); }
+  .pasos { counter-reset: paso; }
+  .pasos h2::before { counter-increment: paso; content: counter(paso); display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 99px; background: var(--ambar); color: #222; margin-right: 10px; font-size: 16px; vertical-align: 2px; }
+  details summary { cursor: pointer; font-weight: 600; }
+</style>
+<script src="lib/aframe.min.js"></script>
+<script src="lib/mindar-image-aframe.prod.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="js/paquete.js"></script>
+<script src="js/escena-ra.js"></script>
+</head>
+<body>
+<header class="barra">
+  <a class="marca" href="index.html"><img src="img/icono.svg" alt="">RA · IPESfa</a>
+  <nav><a href="index.html">Inicio</a><a href="visor.html">Ver</a><a href="creador.html" aria-current="page">Crear</a></nav>
+</header>
+
+<main class="pasos" id="pantalla-creador">
+  <h1>Crear una experiencia</h1>
+  <p class="bajada">Elegí una imagen (la lámina que se va a imprimir o proyectar) y lo que querés que aparezca encima: un video, una imagen, un modelo 3D o un audio. Todo se procesa en tu navegador; nada se sube a ningún lado.</p>
+  <div class="fila" style="margin-bottom:6px">
+    <label class="btn chico"><input type="file" id="abrir-edicion" accept=".zip" hidden>✏️ Abrir un paquete para editarlo</label>
+  </div>
+
+  <h2>Datos de la experiencia</h2>
+  <div class="tarjeta" style="display:grid;gap:12px">
+    <label class="campo">Título<input type="text" id="titulo" placeholder="Por ejemplo: El ciclo del agua" maxlength="80"></label>
+    <label class="campo">Autoría <span class="suave chico" style="font-weight:400">(nombre, curso o materia)</span><input type="text" id="autoria" placeholder="Por ejemplo: 2.º año Profesorado de Primaria" maxlength="100"></label>
+    <label class="campo">Descripción <span class="suave chico" style="font-weight:400">(opcional)</span><textarea id="descripcion" maxlength="400"></textarea></label>
+  </div>
+
+  <h2>Láminas y contenidos</h2>
+  <div id="laminas"></div>
+  <button class="btn" id="agregar">＋ Agregar otra lámina</button>
+  <details class="tarjeta" style="margin-top:14px">
+    <summary>Consejos para que la cámara reconozca bien la lámina</summary>
+    <ul class="chico">
+      <li>Usá imágenes con mucho detalle, bordes y contraste (fotos, ilustraciones, láminas con texto). Las imágenes lisas, con degradés suaves o muy repetitivas se reconocen mal.</li>
+      <li>Evitá las imágenes simétricas: la cámara tiene que poder distinguir qué lado es cuál.</li>
+      <li>Imprimí en papel mate si podés: el brillo de la luz molesta.</li>
+      <li>Videos livianos: MP4 (H.264), 720p o menos y de pocos segundos. Si pesan más de 30 MB conviene comprimirlos.</li>
+      <li>Modelos 3D en formato .glb (un solo archivo).</li>
+    </ul>
+  </details>
+
+  <h2>Generar</h2>
+  <div class="tarjeta" style="display:grid;gap:12px">
+    <p class="suave" style="margin:0">El sistema analiza cada lámina para poder reconocerla con la cámara. Puede tardar unos segundos por lámina.</p>
+    <div class="fila"><button class="btn primario grande" id="generar">⚙️ Generar experiencia</button></div>
+    <div id="estado-generar" class="oculto">
+      <div class="progreso"><div id="barra"></div></div>
+      <p class="chico suave" id="texto-progreso" style="margin:6px 0 0"></p>
+    </div>
+    <div id="msg" class="oculto"></div>
+    <div id="acciones" class="fila oculto">
+      <button class="btn primario" id="probar">📷 Probar con la cámara</button>
+      <button class="btn primario" id="descargar">⬇️ Descargar paquete (.zip)</button>
+    </div>
+  </div>
+</main>
+
+<div id="ra" class="oculto"></div>
+<div id="ra-hud" class="ra-hud oculto"><button class="btn" id="btn-salir">✕ Volver al creador</button></div>
+<div id="ra-escaneo" class="ra-escaneo oculto"><div class="mira"></div>Apuntá la cámara a la lámina</div>
+<div id="ra-cargando" class="ra-cargando oculto"><div><div class="rueda"></div>Preparando la cámara…</div></div>
+
+<footer class="pie" id="pie">Sistema de realidad aumentada del IPES "Florentino Ameghino" · Ushuaia</footer>
+
+<template id="tpl-lamina">
+  <section class="tarjeta lamina">
+    <div class="cabeza">
+      <span class="num"></span>
+      <input type="text" class="nombre-lamina" maxlength="60">
+      <span class="calidad oculto"></span>
+      <button class="btn chico peligro quitar" style="margin-left:auto" title="Quitar esta lámina">Quitar</button>
+    </div>
+    <div>
+      <div class="previa">
+        <label class="vacia"><input type="file" class="in-imagen" accept="image/jpeg,image/png,image/webp" hidden><div><div style="font-size:38px">🖼️</div><b>Elegí la imagen de la lámina</b><br><span class="chico">JPG o PNG. Es lo que la cámara va a reconocer.</span></div></label>
+      </div>
+      <div class="elegir" style="margin-top:8px">
+        <label class="btn chico cambiar-imagen oculto"><input type="file" class="in-imagen2" accept="image/jpeg,image/png,image/webp" hidden>Cambiar imagen</label>
+      </div>
+    </div>
+    <div class="controles">
+      <div>
+        <b>¿Qué aparece encima?</b>
+        <div class="elegir" style="margin-top:6px">
+          <label class="btn chico primario"><input type="file" class="in-contenido" accept="video/*,image/*,audio/*,.glb,.mp4,.webm,.mp3,.ogg,.m4a,.wav" hidden>Elegir archivo</label>
+          <span class="nombre nombre-contenido">Video, imagen, modelo 3D (.glb) o audio</span>
+        </div>
+        <div class="aviso-cont chico" style="margin-top:6px"></div>
+      </div>
+      <div class="ajustes oculto">
+        <label class="campo plano">Forma
+          <select class="ajuste">
+            <option value="imagen">Cubrir la lámina exacta</option>
+            <option value="propio">Mantener la forma del contenido</option>
+          </select>
+        </label>
+        <label class="campo m3d oculto">Cómo va a estar la lámina
+          <select class="orientacion">
+            <option value="mesa">Apoyada en la mesa (el modelo se para encima)</option>
+            <option value="pared">En la pared o proyectada (el modelo sale de frente)</option>
+          </select>
+        </label>
+        <label class="campo">Tamaño <span class="suave chico val-escala"></span><input type="range" class="escala" min="0.1" max="3" step="0.05" value="1"></label>
+        <div class="dos">
+          <label class="campo">Mover ↔<input type="range" class="dx" min="-1" max="1" step="0.01" value="0"></label>
+          <label class="campo">Mover ↕<input type="range" class="dy" min="-1" max="1" step="0.01" value="0"></label>
+        </div>
+        <label class="campo plano">Girar <span class="suave chico val-rot"></span><input type="range" class="rotacion" min="-180" max="180" step="5" value="0"></label>
+        <label class="campo m3d oculto">Elevar sobre la lámina<input type="range" class="dz" min="0" max="1" step="0.02" value="0"></label>
+        <label class="fila m3d oculto chico"><input type="checkbox" class="girar"> Que el modelo gire solo</label>
+        <label class="fila media oculto chico"><input type="checkbox" class="repetir" checked> Repetir en bucle</label>
+        <label class="fila solo-video oculto chico"><input type="checkbox" class="sonido" checked> Con sonido</label>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (s, r) => (r || document).querySelector(s);
+  const laminas = [];          // estado de cada lámina
+  let mindCache = null;        // { firma, datos }
+  let sesion = null;
+  let contador = 0;
+  const MAX_LADO = 1024;
+
+  function esc(t) { const d = document.createElement("div"); d.textContent = t == null ? "" : t; return d.innerHTML; }
+  function mensaje(tipo, html) { const m = $("#msg"); m.className = tipo; m.innerHTML = html; }
+  function tamano(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.round(b / 1024) + " KB"; }
+
+  function cargarImagen(url) {
+    return new Promise((ok, mal) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => mal(new Error("No se pudo leer la imagen.")); im.src = url; });
+  }
+
+  /* Normaliza la imagen de la lámina: máximo 1024 px de lado, JPEG */
+  async function prepararImagen(blob) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const im = await cargarImagen(url);
+      const k = Math.min(1, MAX_LADO / Math.max(im.naturalWidth, im.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+      const g = c.getContext("2d");
+      g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(im, 0, 0, c.width, c.height);
+      const jpg = await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.9));
+      const jurl = URL.createObjectURL(jpg);
+      const img = await cargarImagen(jurl);
+      return { blob: jpg, url: jurl, img, proporcion: c.height / c.width, id: "img" + (++contador) };
+    } finally { URL.revokeObjectURL(url); }
+  }
+
+  function proporcionContenido(tipo, url) {
+    return new Promise((ok) => {
+      if (tipo === "video") {
+        const v = document.createElement("video");
+        v.preload = "metadata"; v.muted = true;
+        v.onloadedmetadata = () => ok(v.videoWidth ? v.videoHeight / v.videoWidth : null);
+        v.onerror = () => ok(null);
+        v.src = url;
+      } else if (tipo === "imagen") {
+        cargarImagen(url).then((im) => ok(im.naturalHeight / im.naturalWidth)).catch(() => ok(null));
+      } else ok(null);
+    });
+  }
+
+  function nuevaLamina(datos) {
+    const nodo = $("#tpl-lamina").content.firstElementChild.cloneNode(true);
+    const L = {
+      nodo, imagen: null,
+      contenido: null, // { tipo, blob, url, nombreArchivo, proporcion }
+      ajustes: { ajuste: "imagen", escala: 1, dx: 0, dy: 0, dz: 0, rotacion: 0, orientacion: "mesa", girar: true, repetir: true, sonido: true },
+      calidad: null,
+    };
+    laminas.push(L);
+    $("#laminas").appendChild(nodo);
+    const q = (s) => $(s, nodo);
+
+    q(".quitar").onclick = () => {
+      if (laminas.length === 1) { alert("La experiencia necesita al menos una lámina."); return; }
+      laminas.splice(laminas.indexOf(L), 1); nodo.remove(); renumerar(); invalidar();
+    };
+    const alElegirImagen = async (e) => {
+      const f = e.target.files[0]; e.target.value = "";
+      if (!f) return;
+      try { L.imagen = await prepararImagen(f); L.calidad = null; dibujarPrevia(L); invalidar(); }
+      catch (err) { alert(err.message); }
+    };
+    q(".in-imagen").onchange = alElegirImagen;
+    q(".in-imagen2").onchange = alElegirImagen;
+    q(".in-contenido").onchange = async (e) => {
+      const f = e.target.files[0]; e.target.value = "";
+      if (f) await ponerContenido(L, f, f.name);
+    };
+    const ctrl = ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "girar", "repetir", "sonido"];
+    ctrl.forEach((k) => {
+      const el = q("." + k);
+      el.addEventListener("input", () => {
+        L.ajustes[k] = el.type === "checkbox" ? el.checked : (el.tagName === "SELECT" ? el.value : parseFloat(el.value));
+        dibujarPrevia(L);
+      });
+    });
+
+    if (datos) {
+      L.imagen = datos.imagen; L.calidad = datos.calidad || null;
+      Object.assign(L.ajustes, datos.ajustes || {});
+      if (datos.contenido) L.contenido = datos.contenido;
+      q(".nombre-lamina").value = datos.nombre || "";
+    }
+    renumerar();
+    sincronizarControles(L);
+    dibujarPrevia(L);
+    return L;
+  }
+
+  async function ponerContenido(L, blob, nombre) {
+    const tipo = Paquete.tipoDeArchivo(nombre, blob.type);
+    const av = $(".aviso-cont", L.nodo);
+    if (!tipo) { av.innerHTML = "<span style='color:var(--mal)'>Ese tipo de archivo no se puede usar. Probá con MP4, JPG/PNG, GLB o MP3.</span>"; return; }
+    if (tipo === "imagen" && /\.gif$/i.test(nombre)) av.innerHTML = "Ojo: los GIF se ven quietos. Para animaciones usá un video MP4.";
+    else if (blob.size > 30 * 1048576) av.innerHTML = `<span style='color:var(--aviso)'>El archivo pesa ${tamano(blob.size)}. Va a andar, pero conviene comprimirlo para que el paquete sea liviano.</span>`;
+    else av.innerHTML = "";
+    if (L.contenido && L.contenido.url) URL.revokeObjectURL(L.contenido.url);
+    const url = URL.createObjectURL(blob);
+    L.contenido = { tipo, blob, url, nombreArchivo: nombre, proporcion: await proporcionContenido(tipo, url) };
+    // valores iniciales razonables según el tipo
+    if (tipo === "modelo") Object.assign(L.ajustes, { escala: 0.6, rotacion: 0 });
+    if (tipo === "audio") Object.assign(L.ajustes, { escala: 0.3 });
+    if (tipo === "video" || tipo === "imagen") L.ajustes.escala = 1;
+    sincronizarControles(L);
+    dibujarPrevia(L);
+  }
+
+  function sincronizarControles(L) {
+    const q = (s) => $(s, L.nodo);
+    const a = L.ajustes, c = L.contenido;
+    ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion"].forEach((k) => { q("." + k).value = a[k]; });
+    ["girar", "repetir", "sonido"].forEach((k) => { q("." + k).checked = !!a[k]; });
+    const tipo = c ? c.tipo : null;
+    q(".ajustes").classList.toggle("oculto", !tipo);
+    L.nodo.querySelectorAll(".plano").forEach((e) => e.classList.toggle("oculto", !(tipo === "video" || tipo === "imagen")));
+    L.nodo.querySelectorAll(".m3d").forEach((e) => e.classList.toggle("oculto", tipo !== "modelo"));
+    L.nodo.querySelectorAll(".media").forEach((e) => e.classList.toggle("oculto", !(tipo === "video" || tipo === "audio")));
+    L.nodo.querySelectorAll(".solo-video").forEach((e) => e.classList.toggle("oculto", tipo !== "video"));
+    const etiqueta = { video: "🎬 ", imagen: "🖼️ ", modelo: "🧊 ", audio: "🔊 " }[tipo] || "";
+    q(".nombre-contenido").textContent = c ? etiqueta + c.nombreArchivo + (c.blob ? " · " + tamano(c.blob.size) : "") : "Video, imagen, modelo 3D (.glb) o audio";
+  }
+
+  function dibujarPrevia(L) {
+    const q = (s) => $(s, L.nodo);
+    const previa = q(".previa");
+    q(".cambiar-imagen").classList.toggle("oculto", !L.imagen);
+    q(".val-escala").textContent = Math.round(L.ajustes.escala * 100) + "%";
+    q(".val-rot").textContent = L.ajustes.rotacion + "°";
+    const cal = q(".calidad");
+    if (L.calidad) {
+      cal.className = "calidad " + L.calidad.nivel;
+      cal.textContent = { buena: "Se reconoce bien", media: "Se reconoce regular", baja: "Difícil de reconocer" }[L.calidad.nivel];
+    } else cal.className = "calidad oculto";
+    if (!L.imagen) return;
+    previa.innerHTML = `<img class="fondo" src="${L.imagen.url}" alt="">`;
+    const c = L.contenido;
+    if (!c) return;
+    const W = previa.clientWidth || 400;
+    const a = L.ajustes;
+    let el, w, h, rot = a.rotacion;
+    if (c.tipo === "video" || c.tipo === "imagen") {
+      const m = EscenaRA.medidas({ proporcion: L.imagen.proporcion }, { ajuste: a.ajuste, escala: a.escala, proporcion: c.proporcion });
+      w = m.w * W; h = m.h * W;
+      el = document.createElement(c.tipo === "video" ? "video" : "img");
+      el.src = c.url;
+      if (c.tipo === "video") { el.muted = true; el.loop = true; el.autoplay = true; el.setAttribute("playsinline", ""); }
+      el.style.objectFit = "fill";
+    } else {
+      w = h = Math.max(36, (c.tipo === "modelo" ? a.escala : a.escala) * W * 0.8);
+      if (c.tipo === "audio") w = h = Math.max(36, a.escala * W);
+      el = document.createElement("div");
+      el.className = "icono3d";
+      el.textContent = c.tipo === "modelo" ? "🧊" : "🔊";
+      el.style.fontSize = Math.max(22, w * 0.45) + "px";
+      rot = 0;
+    }
+    el.classList.add("encima");
+    const H = W * L.imagen.proporcion;
+    const cx = W / 2 + a.dx * W, cy = H / 2 - a.dy * W;
+    el.style.width = w + "px"; el.style.height = h + "px";
+    el.style.transform = `translate(${cx - w / 2}px, ${cy - h / 2}px) rotate(${-rot}deg)`;
+    previa.appendChild(el);
+  }
+
+  function renumerar() {
+    laminas.forEach((L, i) => {
+      $(".num", L.nodo).textContent = i + 1;
+      const n = $(".nombre-lamina", L.nodo);
+      n.placeholder = "Lámina " + (i + 1);
+    });
+  }
+
+  function invalidar() {
+    $("#acciones").classList.add("oculto");
+    $("#msg").className = "oculto";
+  }
+
+  function firma() { return laminas.map((L) => (L.imagen ? L.imagen.id : "-")).join("|"); }
+
+  /* Evalúa qué tan reconocible es cada imagen, a partir de los puntos que encontró el compilador */
+  function evaluarCalidad(dato) {
+    let puntos = 0, rastreo = 0;
+    try {
+      (dato.matchingData || []).forEach((m) => { puntos += (m.maximaPoints || []).length + (m.minimaPoints || []).length; });
+      const t = (dato.trackingData || [])[0];
+      rastreo = t && t.points ? t.points.length : 0;
+    } catch (e) {}
+    const nivel = puntos >= 1200 && rastreo >= 20 ? "buena" : (puntos >= 300 && rastreo >= 8 ? "media" : "baja");
+    return { nivel, puntos, rastreo };
+  }
+
+  async function generar() {
+    const faltan = laminas.findIndex((L) => !L.imagen || !L.contenido);
+    if (faltan >= 0) {
+      mensaje("error", `A la lámina ${faltan + 1} le falta ${!laminas[faltan].imagen ? "la imagen" : "el contenido que aparece encima"}.`);
+      return;
+    }
+    const btn = $("#generar");
+    btn.disabled = true;
+    $("#acciones").classList.add("oculto");
+    $("#estado-generar").classList.remove("oculto");
+    $("#msg").className = "oculto";
+    const f = firma();
+    try {
+      if (!mindCache || mindCache.firma !== f) {
+        $("#texto-progreso").textContent = "Analizando las láminas… (no cierres la pestaña)";
+        const compilador = new MINDAR.IMAGE.Compiler();
+        await compilador.compileImageTargets(laminas.map((L) => L.imagen.img), (p) => {
+          $("#barra").style.width = p.toFixed(0) + "%";
+          $("#texto-progreso").textContent = "Analizando las láminas… " + p.toFixed(0) + "%";
+        });
+        const datos = await compilador.exportData();
+        laminas.forEach((L, i) => { L.calidad = evaluarCalidad(compilador.data[i]); dibujarPrevia(L); });
+        mindCache = { firma: f, datos };
+      }
+      $("#barra").style.width = "100%";
+      $("#texto-progreso").textContent = "Listo.";
+      const bajas = laminas.map((L, i) => (L.calidad && L.calidad.nivel === "baja" ? i + 1 : null)).filter(Boolean);
+      mensaje(bajas.length ? "aviso" : "okmsg", bajas.length
+        ? `La experiencia está lista, pero ${bajas.length > 1 ? "las láminas " + bajas.join(", ") + " tienen" : "la lámina " + bajas[0] + " tiene"} poco detalle y a la cámara le va a costar reconocerla. Si podés, usá una imagen con más textura y contraste.`
+        : "¡Lista! Probala con la cámara o descargá el paquete para compartirlo.");
+      $("#acciones").classList.remove("oculto");
+      window.__CREADOR_LISTO = true;
+    } catch (e) {
+      console.error(e);
+      mensaje("error", "No se pudo generar la experiencia: " + esc(e.message || String(e)));
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function armarPaquete() {
+    return Paquete.crear({
+      titulo: $("#titulo").value.trim() || "Experiencia sin título",
+      autoria: $("#autoria").value.trim(),
+      descripcion: $("#descripcion").value.trim(),
+      mind: mindCache.datos,
+      laminas: laminas.map((L, i) => ({
+        nombre: $(".nombre-lamina", L.nodo).value.trim() || "Lámina " + (i + 1),
+        imagenBlob: L.imagen.blob,
+        proporcion: +L.imagen.proporcion.toFixed(5),
+        calidad: L.calidad ? L.calidad.nivel : null,
+        contenido: Object.assign({ tipo: L.contenido.tipo, blob: L.contenido.blob, nombreArchivo: L.contenido.nombreArchivo, proporcion: L.contenido.proporcion }, filtrarAjustes(L)),
+      })),
+    });
+  }
+  function filtrarAjustes(L) {
+    const a = L.ajustes, t = L.contenido.tipo;
+    const base = { escala: a.escala, dx: a.dx, dy: a.dy };
+    if (t === "video" || t === "imagen") Object.assign(base, { ajuste: a.ajuste, rotacion: a.rotacion });
+    if (t === "modelo") Object.assign(base, { orientacion: a.orientacion, girar: a.girar, dz: a.dz, rotacion: 0 });
+    if (t === "video" || t === "audio") base.repetir = a.repetir;
+    if (t === "video") base.sonido = a.sonido;
+    return base;
+  }
+
+  async function descargar() {
+    const b = $("#descargar"); b.disabled = true;
+    try {
+      const { blob, nombre } = await armarPaquete();
+      Paquete.descargar(blob, nombre);
+      mensaje("okmsg", `Se descargó <b>${esc(nombre)}</b> (${tamano(blob.size)}). Compartilo por mail, Drive, WhatsApp o pendrive: se abre con el visor.`);
+    } catch (e) { mensaje("error", esc(e.message)); }
+    finally { b.disabled = false; }
+  }
+
+  async function probar() {
+    const local = location.protocol === "content:" || location.protocol === "file:";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.isSecureContext) {
+      alert(local
+        ? "El celular no le da permiso de cámara a un archivo abierto desde una carpeta. Podés generar y descargar la experiencia igual; para probarla con la cámara, entrá al sitio publicado."
+        : "Para usar la cámara la página tiene que abrirse con https://");
+      return;
+    }
+    let paquete;
+    try {
+      const { blob } = await armarPaquete();
+      paquete = await Paquete.leer(blob);
+    } catch (e) { mensaje("error", esc(e.message)); return; }
+    ["#ra", "#ra-hud", "#ra-cargando"].forEach((s) => $(s).classList.remove("oculto"));
+    $("#pie").classList.add("oculto");
+    document.body.style.overflow = "hidden";
+    try {
+      sesion = await EscenaRA.iniciar($("#ra"), paquete, {
+        alListo() { $("#ra-cargando").classList.add("oculto"); $("#ra-escaneo").classList.remove("oculto"); },
+        alEncontrar() { $("#ra-escaneo").classList.add("oculto"); },
+        alPerder(i, l, quedan) { if (!quedan) $("#ra-escaneo").classList.remove("oculto"); },
+        alError(t) { alert(t); salir(); },
+      });
+      sesion.paquete = paquete;
+    } catch (e) { alert(e.message); salir(); }
+  }
+  function salir() {
+    if (sesion) { const p = sesion.paquete; sesion.detener(); if (p) p.liberar(); sesion = null; }
+    ["#ra", "#ra-hud", "#ra-cargando", "#ra-escaneo"].forEach((s) => $(s).classList.add("oculto"));
+    $("#pie").classList.remove("oculto");
+    document.body.style.overflow = "";
+  }
+
+  /* Abrir un paquete existente para editarlo */
+  async function abrirParaEditar(f) {
+    try {
+      const p = await Paquete.leer(f);
+      const m = p.meta;
+      $("#titulo").value = m.titulo || "";
+      $("#autoria").value = m.autoria || "";
+      $("#descripcion").value = m.descripcion || "";
+      laminas.splice(0).forEach((L) => L.nodo.remove());
+      for (const l of m.laminas) {
+        const img = await prepararImagen(p.blobs[l.imagen]);
+        const c = l.contenido || {};
+        const blobC = c.archivo ? p.blobs[c.archivo] : null;
+        const nombreArchivo = c.nombreArchivo || (c.archivo || "").split("/").pop();
+        const datos = { nombre: l.nombre, imagen: img, ajustes: Object.assign({}, c), calidad: null };
+        if (blobC) datos.contenido = { tipo: c.tipo, blob: blobC, url: URL.createObjectURL(blobC), nombreArchivo, proporcion: c.proporcion || null };
+        nuevaLamina(datos);
+      }
+      mindCache = null;
+      invalidar();
+      mensaje("okmsg", "Se abrió el paquete. Hacé los cambios y volvé a generar.");
+      window.scrollTo(0, 0);
+    } catch (e) { alert(e.message || String(e)); }
+  }
+
+  $("#agregar").onclick = () => { nuevaLamina(); invalidar(); };
+  $("#generar").onclick = generar;
+  $("#descargar").onclick = descargar;
+  $("#probar").onclick = probar;
+  $("#btn-salir").onclick = salir;
+  $("#abrir-edicion").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) abrirParaEditar(f); };
+  window.addEventListener("resize", () => laminas.forEach(dibujarPrevia));
+  window.addEventListener("beforeunload", (e) => { if (laminas.some((L) => L.imagen)) { e.preventDefault(); e.returnValue = ""; } });
+  nuevaLamina();
+  if (Paquete.esOnline() && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+<div id="sin-archivos">
+  <div class="caja">
+    <h2>Así no se puede abrir en el celular</h2>
+    <p>Android no deja que una página guardada en el teléfono use los demás archivos de su carpeta. Por eso la ves sin formato y los botones no responden. En la notebook, en cambio, anda bien.</p>
+    <p><b>En el celular tenés dos caminos:</b></p>
+    <ol>
+      <li><b>El recomendado:</b> entrá una vez al sitio publicado, con internet. Queda guardado en el teléfono y de ahí en adelante abre sin conexión, incluso en modo avión. Si lo agregás a la pantalla de inicio, queda como una aplicación más.</li>
+      <li>Abrir <code>visor-un-archivo.html</code> o <code>creador-un-archivo.html</code>, que están en esta misma carpeta y traen todo adentro. Vas a ver la pantalla bien, pero la cámara igual necesita que la página venga de internet: el teléfono no le da permiso a un archivo suelto.</li>
+    </ol>
+  </div>
+</div>
+<script>
+/* Si los archivos de la carpeta no se cargaron, mostramos el aviso en vez de una página muerta. */
+window.addEventListener("load", function () {
+  var jsOk = (typeof JSZip !== "undefined");
+  var barra = document.querySelector("header.barra");
+  var cssOk = barra && getComputedStyle(barra).backgroundColor === "rgb(20, 52, 95)";
+  if (jsOk && cssOk) return;
+  var sin = document.getElementById("sin-archivos");
+  document.querySelectorAll("main, header, footer").forEach(function (e) { e.style.display = "none"; });
+  sin.style.display = "block";
+});
+</script>
+</body>
+</html>
