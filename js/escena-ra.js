@@ -71,7 +71,6 @@
         el.setAttribute("playsinline", "");
         el.setAttribute("webkit-playsinline", "");
         el.setAttribute("muted", "");
-        el.setAttribute("crossorigin", "anonymous");
         el.preload = "auto";
         el.loop = c.repetir !== false;
         el.src = paquete.url(c.archivo);
@@ -93,6 +92,37 @@
       }
     });
     return medios;
+  }
+
+  /* El plano del video lo armamos a mano con three.js. Si se deja que A-Frame lo
+     tome de <a-assets>, el video queda en un contenedor con display:none y muchos
+     Android entregan el sonido pero no los cuadros: se escucha y no se ve. */
+  function registrarComponente() {
+    if (AFRAME.components["ra-video"]) return;
+    AFRAME.registerComponent("ra-video", {
+      schema: { id: { type: "string" }, w: { type: "number", default: 1 }, h: { type: "number", default: 1 } },
+      init: function () {
+        const T = AFRAME.THREE;
+        const video = document.getElementById(this.data.id);
+        if (!video) return;
+        const tex = new T.VideoTexture(video);
+        tex.minFilter = T.LinearFilter;
+        tex.magFilter = T.LinearFilter;
+        if ("colorSpace" in tex && T.SRGBColorSpace) tex.colorSpace = T.SRGBColorSpace;
+        else if ("encoding" in tex && T.sRGBEncoding) tex.encoding = T.sRGBEncoding;
+        const mat = new T.MeshBasicMaterial({ map: tex, side: T.DoubleSide });
+        if ("toneMapped" in mat) mat.toneMapped = false;
+        this.malla = new T.Mesh(new T.PlaneGeometry(this.data.w, this.data.h), mat);
+        this.el.setObject3D("mesh", this.malla);
+      },
+      remove: function () {
+        if (!this.malla) return;
+        this.el.removeObject3D("mesh");
+        this.malla.material.map && this.malla.material.map.dispose();
+        this.malla.material.dispose();
+        this.malla.geometry.dispose();
+      },
+    });
   }
 
   function codigoError(el) {
@@ -124,6 +154,7 @@
     const op = Object.assign({ silenciado: false }, opciones || {});
     if (typeof AFRAME === "undefined" || !window.MINDAR) throw new Error("No se cargaron las bibliotecas de RA (A-Frame / MindAR).");
     const meta = paquete.meta;
+    registrarComponente();
     const medios = prepararMedios(paquete, op.silenciado);
     const medioDe = (i) => medios.find((m) => m.indice === i);
 
@@ -149,8 +180,11 @@
     });
     escena.style.cssText = "position:absolute;inset:0;width:100%;height:100%;";
 
-    const assets = crear("a-assets", { timeout: "20000" }, escena);
-    medios.forEach((m) => { if (m.tipo === "video") assets.appendChild(m.el); });
+    medios.forEach((m) => {
+      if (m.tipo !== "video") return;
+      m.el.style.cssText = "position:absolute;top:0;left:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-3";
+      contenedor.appendChild(m.el);
+    });
 
     crear("a-camera", { position: "0 0 0", "look-controls": "enabled: false", "wasd-controls": "enabled: false" }, escena);
     crear("a-entity", { light: "type: ambient; intensity: 1.2" }, escena);
@@ -191,10 +225,9 @@
 
       if (c.tipo === "video" && url) {
         const { w, h } = medidas(l, c);
-        crear("a-video", {
-          src: "#ra-medio-" + i, width: w, height: h,
+        crear("a-entity", {
+          "ra-video": `id: ra-medio-${i}; w: ${w}; h: ${h}`,
           position: `${dx} ${dy} ${0.002 + dz}`, rotation: `0 0 ${rot}`,
-          material: "shader: flat; transparent: false; side: double",
         }, ancla);
       } else if (c.tipo === "imagen" && url) {
         const { w, h } = medidas(l, c);
