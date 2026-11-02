@@ -158,3 +158,11 @@ footer.pie { text-align: center; color: var(--suave); font-size: 14px; padding: 
 .ra-festejo span { font-size: 46px; }
 .ra-festejo.se-va { opacity: 0; transform: translate(-50%, -50%) scale(.9); }
 @keyframes festejo { from { transform: translate(-50%, -50%) scale(.6); opacity: 0; } }
+
+/* Tira de imágenes a ordenar, en el creador */
+.tira-fotos { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+.foto-orden { position: relative; width: 92px; display: grid; gap: 4px; justify-items: center; }
+.foto-orden img { width: 92px; height: 70px; object-fit: contain; background: #fff; border: 1px solid var(--borde); border-radius: 6px; }
+.foto-orden .num { position: absolute; left: 4px; top: 4px; background: var(--azul); color: #fff; border-radius: 99px; width: 22px; height: 22px; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.foto-orden .flechas { display: flex; gap: 4px; }
+.foto-orden .flechas .btn { padding: 2px 8px; min-height: 28px; }

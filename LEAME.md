@@ -20,9 +20,9 @@ Sistema libre para crear y ver experiencias de realidad aumentada (estilo Artivi
 
 Sobre cada lámina puede aparecer un video, una imagen, un modelo 3D (.glb), un audio, un **rompecabezas** o una actividad de **ordenar palabras**. Si se elige una imagen, el creador pregunta si se muestra tal cual o si se parte en piezas. Las piezas salen desordenadas y se tocan de a dos para intercambiarlas; al completarlo aparece el mensaje que haya puesto el docente.
 
-Para ordenar palabras no hace falta ningún archivo: se escriben las frases en el orden correcto, una por línea, y el sistema las muestra desordenadas. Se acomodan con el mismo gesto de tocar de a dos.
+Ordenar funciona con **palabras** o con **imágenes**. Para palabras se escriben las frases en el orden correcto, una por línea, sin ningún archivo. Para imágenes se eligen varias de una vez y se acomodan con las flechas hasta dejarlas en el orden correcto. En los dos casos el sistema las muestra desordenadas y se acomodan tocando de a dos; se puede elegir si quedan una debajo de la otra o una al lado de la otra.
 
-En la galería hay un ejemplo de las dos cosas: **Dos actividades para tocar** (rompecabezas del teorema de Pitágoras y los cuatro pasos de Pólya). Las láminas para imprimir están en `ejemplos/pitagoras.jpg` y `ejemplos/problemas.jpg`.
+En la galería hay ejemplos: **Cuadrados perfectos** (ordenar imágenes) y **Dos actividades para tocar** (rompecabezas del teorema de Pitágoras y los cuatro pasos de Pólya). Las láminas para imprimir están en `ejemplos/pitagoras.jpg`, `ejemplos/problemas.jpg` y `ejemplos/cuadrados.jpg`.
 
 También hay, por lámina: bordes suaves (el contenido se desvanece hacia los costados), y un enlace que se abre al tocar el contenido. Quien mira puede agrandar con dos dedos y volver al tamaño original con doble toque.
 

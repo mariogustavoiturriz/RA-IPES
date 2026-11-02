@@ -1,6 +1,12 @@
 {
   "experiencias": [
     {
+      "titulo": "Cuadrados perfectos",
+      "descripcion": "Ordenar imágenes: la sucesión 1, 4, 9 y 16",
+      "archivo": "experiencias/cuadrados-perfectos.zip",
+      "imagen": "experiencias/cuadrados-perfectos.jpg"
+    },
+    {
       "titulo": "Dos actividades para tocar",
       "descripcion": "Rompecabezas de Pitágoras y los pasos para resolver un problema",
       "archivo": "experiencias/dos-actividades.zip",

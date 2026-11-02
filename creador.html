@@ -152,6 +152,7 @@
         <div class="elegir" style="margin-top:6px">
           <label class="btn chico primario"><input type="file" class="in-contenido" accept="video/*,image/*,audio/*,.glb,.mp4,.webm,.mp3,.ogg,.m4a,.wav" hidden>Elegir archivo</label>
           <button class="btn chico en-orden">🔤 Ordenar palabras</button>
+          <label class="btn chico"><input type="file" class="in-fotos" accept="image/*" multiple hidden>🖼️ Ordenar imágenes</label>
           <span class="nombre nombre-contenido">Video, imagen, modelo 3D (.glb) o audio</span>
         </div>
         <div class="aviso-cont chico" style="margin-top:6px"></div>
@@ -176,6 +177,16 @@
         <label class="campo con-mensaje oculto">Mensaje al completarlo<input type="text" class="mensaje" value="¡Muy bien!" maxlength="40"></label>
         <label class="campo solo-orden oculto">Las palabras o frases, <b>en el orden correcto</b> (una por línea)
           <textarea class="palabras" rows="5" placeholder="Comprender el problema&#10;Pensar un plan&#10;Llevarlo a cabo&#10;Mirar para atrás"></textarea></label>
+        <div class="campo solo-fotos oculto">Las imágenes, <b>en el orden correcto</b>
+          <div class="tira-fotos"></div>
+          <span class="chico suave">Usá las flechas para acomodarlas. Conviene que sean parecidas entre sí, y cuadradas van bien.</span>
+        </div>
+        <label class="campo solo-orden oculto">Cómo se acomodan
+          <select class="direccion">
+            <option value="columna">Una debajo de la otra</option>
+            <option value="fila">Una al lado de la otra</option>
+          </select>
+        </label>
         <p class="chico suave solo-orden oculto" style="margin:0">Van a aparecer desordenadas. Se tocan de a dos para intercambiarlas.</p>
         <label class="campo plano">Forma
           <select class="ajuste">
@@ -263,7 +274,7 @@
       nodo, imagen: null,
       contenido: null, // { tipo, blob, url, nombreArchivo, proporcion }
       ajustes: { ajuste: "imagen", escala: 1, dx: 0, dy: 0, dz: 0, rotacion: 0, orientacion: "mesa", girar: true, repetir: true, sonido: true, suavidad: 0.12, enlace: "",
-                 juego: "mostrar", piezas: "3x3", pista: true, mensaje: "¡Muy bien!", palabras: "" },
+                 juego: "mostrar", piezas: "3x3", pista: true, mensaje: "¡Muy bien!", palabras: "", direccion: "columna" },
       calidad: null,
     };
     laminas.push(L);
@@ -292,12 +303,27 @@
       dibujarPrevia(L);
       invalidar();
     };
+    q(".in-fotos").onchange = (e) => {
+      const archivos = Array.from(e.target.files || []);
+      e.target.value = "";
+      if (archivos.length < 2) { alert("Elegí al menos dos imágenes."); return; }
+      if (L.contenido && L.contenido.url) URL.revokeObjectURL(L.contenido.url);
+      L.contenido = {
+        tipo: "ordenar", blob: null, url: null, nombreArchivo: "", proporcion: null,
+        fotos: archivos.map((f) => ({ blob: f, nombre: f.name, url: URL.createObjectURL(f) })),
+      };
+      L.ajustes.direccion = "fila";
+      $(".aviso-cont", L.nodo).innerHTML = "";
+      sincronizarControles(L);
+      dibujarPrevia(L);
+      invalidar();
+    };
     q(".in-contenido").onchange = async (e) => {
       const f = e.target.files[0]; e.target.value = "";
       if (f) await ponerContenido(L, f, f.name);
     };
     const ctrl = ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "girar", "repetir", "sonido", "suavidad", "enlace",
-                  "juego", "piezas", "pista", "mensaje", "palabras"];
+                  "juego", "piezas", "pista", "mensaje", "palabras", "direccion"];
     ctrl.forEach((k) => {
       const el = q("." + k);
       el.addEventListener("input", () => {
@@ -342,11 +368,28 @@
     dibujarPrevia(L);
   }
 
+  function dibujarTiraFotos(L) {
+    const tira = $(".tira-fotos", L.nodo);
+    const fotos = L.contenido.fotos || [];
+    tira.innerHTML = "";
+    fotos.forEach((f, i) => {
+      const d = document.createElement("div");
+      d.className = "foto-orden";
+      d.innerHTML = `<span class="num">${i + 1}</span><img src="${f.url}" alt="">
+        <div class="flechas"><button class="btn chico" ${i === 0 ? "disabled" : ""}>←</button>
+        <button class="btn chico" ${i === fotos.length - 1 ? "disabled" : ""}>→</button></div>`;
+      const [izq, der] = d.querySelectorAll("button");
+      izq.onclick = (e) => { e.preventDefault(); fotos.splice(i - 1, 0, fotos.splice(i, 1)[0]); dibujarTiraFotos(L); dibujarPrevia(L); invalidar(); };
+      der.onclick = (e) => { e.preventDefault(); fotos.splice(i + 1, 0, fotos.splice(i, 1)[0]); dibujarTiraFotos(L); dibujarPrevia(L); invalidar(); };
+      tira.appendChild(d);
+    });
+  }
+
   function sincronizarControles(L) {
     const q = (s) => $(s, L.nodo);
     const a = L.ajustes, c = L.contenido;
     ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "suavidad", "enlace",
-     "juego", "piezas", "mensaje", "palabras"].forEach((k) => { q("." + k).value = a[k]; });
+     "juego", "piezas", "mensaje", "palabras", "direccion"].forEach((k) => { q("." + k).value = a[k]; });
     ["girar", "repetir", "sonido", "pista"].forEach((k) => { q("." + k).checked = !!a[k]; });
     const tipo = c ? c.tipo : null;
     q(".ajustes").classList.toggle("oculto", !tipo);
@@ -355,7 +398,13 @@
     L.nodo.querySelectorAll(".media").forEach((e) => e.classList.toggle("oculto", !(tipo === "video" || tipo === "audio")));
     L.nodo.querySelectorAll(".solo-video").forEach((e) => e.classList.toggle("oculto", tipo !== "video"));
     const esOrden = tipo === "ordenar";
+    const conFotos = esOrden && (L.contenido.fotos || []).length > 0;
     L.nodo.querySelectorAll(".solo-orden").forEach((e) => e.classList.toggle("oculto", !esOrden));
+    L.nodo.querySelectorAll(".solo-fotos").forEach((e) => e.classList.toggle("oculto", !conFotos));
+    L.nodo.querySelectorAll(".campo.solo-orden").forEach((e) => {
+      if (e.querySelector(".palabras")) e.classList.toggle("oculto", !esOrden || conFotos);
+    });
+    if (conFotos) dibujarTiraFotos(L);
     const esJuego = tipo === "imagen" && a.juego === "rompecabezas";
     L.nodo.querySelectorAll(".con-mensaje").forEach((e) => e.classList.toggle("oculto", !(esJuego || esOrden)));
     L.nodo.querySelectorAll(".solo-imagen").forEach((e) => e.classList.toggle("oculto", tipo !== "imagen"));
@@ -401,6 +450,24 @@
       el.textContent = c.tipo === "modelo" ? "🧊" : "🔊";
       el.style.fontSize = Math.max(22, w * 0.45) + "px";
       rot = 0;
+    }
+    if (c.tipo === "ordenar" && (c.fotos || []).length) {
+      const n = c.fotos.length;
+      const caja = document.createElement("div");
+      caja.className = "encima";
+      const W = previa.clientWidth || 400, H = W * L.imagen.proporcion;
+      const fila = a.direccion === "fila";
+      caja.style.cssText = `width:${W * 0.94}px;height:${H * 0.92}px;left:${W * 0.03}px;top:${H * 0.04}px;` +
+        `transform:none;outline:none;display:grid;gap:4px;place-items:center;` +
+        (fila ? `grid-template-columns:repeat(${n},1fr)` : `grid-template-rows:repeat(${n},1fr)`);
+      c.fotos.forEach((f) => {
+        const im = document.createElement("img");
+        im.src = f.url;
+        im.style.cssText = "max-width:100%;max-height:100%;object-fit:contain;border:3px solid #14345f;border-radius:4px;background:#fff";
+        caja.appendChild(im);
+      });
+      previa.appendChild(caja);
+      return;
     }
     if (c.tipo === "ordenar") {
       const lista = (a.palabras || "").split("\n").map((t) => t.trim()).filter(Boolean);
@@ -541,8 +608,11 @@
     const base = { escala: a.escala, dx: a.dx, dy: a.dy };
     if ((a.enlace || "").trim()) base.enlace = a.enlace.trim();
     if (t === "ordenar") {
+      const conFotos = (L.contenido.fotos || []).length > 0;
       return Object.assign(base, {
-        items: (a.palabras || "").split("\n").map((x) => x.trim()).filter(Boolean),
+        items: conFotos ? [] : (a.palabras || "").split("\n").map((x) => x.trim()).filter(Boolean),
+        fotos: conFotos ? L.contenido.fotos.map((f) => ({ blob: f.blob, nombre: f.nombre })) : undefined,
+        direccion: a.direccion,
         mensaje: (a.mensaje || "¡Muy bien!").trim(),
       });
     }
@@ -622,7 +692,14 @@
         if (Array.isArray(guardados.items)) guardados.palabras = guardados.items.join("\n");
         const datos = { nombre: l.nombre, imagen: img, ajustes: guardados, calidad: null };
         if (blobC) datos.contenido = { tipo: c.tipo, blob: blobC, url: URL.createObjectURL(blobC), nombreArchivo, proporcion: c.proporcion || null };
-        if (c.tipo === "ordenar") datos.contenido = { tipo: "ordenar", blob: null, url: null, nombreArchivo: "", proporcion: null };
+        if (c.tipo === "ordenar") {
+          datos.contenido = { tipo: "ordenar", blob: null, url: null, nombreArchivo: "", proporcion: null };
+          if (Array.isArray(c.archivos)) {
+            datos.contenido.fotos = c.archivos.map((ruta) => ({
+              blob: p.blobs[ruta], nombre: ruta.split("/").pop(), url: URL.createObjectURL(p.blobs[ruta]),
+            }));
+          }
+        }
         nuevaLamina(datos);
       }
       mindCache = null;

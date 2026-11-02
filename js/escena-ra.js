@@ -136,24 +136,38 @@
   /* Dibuja la máscara que suaviza los bordes: blanco en el medio, que se va
      desvaneciendo hacia afuera. Se usa igual en la escena y en la vista previa
      del creador, así lo que ves al armar es lo que se ve después. */
+  /* Dibuja la máscara que suaviza los bordes: opaca en el medio y desvanecida
+     hacia afuera. La calculamos píxel por píxel en vez de usar el desenfoque del
+     navegador, porque varios Android no lo tienen y el borde salía duro.
+     Se usa igual en la escena y en la vista previa del creador. */
   function mascaraCanvas(aspecto, suavidad, conAlfa) {
-    const L = 256;
+    const W = 192;
+    const H = Math.max(16, Math.round(W * (aspecto || 1)));
     const c = document.createElement("canvas");
-    c.width = L;
-    c.height = Math.max(16, Math.round(L * (aspecto || 1)));
+    c.width = W; c.height = H;
     const g = c.getContext("2d");
-    // Para three.js hace falta fondo negro (lee el brillo); para el CSS de la vista
-    // previa hace falta fondo transparente (lee la transparencia).
-    if (!conAlfa) { g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height); }
-    const s = Math.max(0, Math.min(0.45, suavidad));
-    const m = Math.round(Math.min(c.width, c.height) * s * 0.5); // margen del desvanecido
-    const radio = Math.round(Math.min(c.width, c.height) * s * 0.6);
-    g.fillStyle = "#fff";
-    if (m > 0 && "filter" in g) g.filter = "blur(" + m + "px)";
-    const x = m * 1.2, y = m * 1.2, w = c.width - 2 * x, h = c.height - 2 * y;
-    if (g.roundRect) { g.beginPath(); g.roundRect(x, y, w, h, radio); g.fill(); }
-    else g.fillRect(x, y, w, h);
-    g.filter = "none";
+    const img = g.createImageData(W, H);
+    const px = img.data;
+    const s = Math.max(0, Math.min(0.45, suavidad || 0));
+    const banda = Math.max(1, Math.min(W, H) * s * 0.5);   // ancho del desvanecido
+    const radio = banda * 0.9;                             // esquinas redondeadas
+    const mx = W / 2, my = H / 2;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        // distancia al borde de un rectángulo de esquinas redondeadas
+        const dx = Math.abs(x + 0.5 - mx) - (mx - radio);
+        const dy = Math.abs(y + 0.5 - my) - (my - radio);
+        const fuera = Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+        const d = fuera + Math.min(Math.max(dx, dy), 0) - radio;
+        let t = -d / banda;                 // 1 bien adentro, 0 en el borde
+        t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        const a = t * t * (3 - 2 * t);      // suavizado, para que no se note el corte
+        const i = (y * W + x) * 4;
+        if (conAlfa) { px[i] = px[i + 1] = px[i + 2] = 255; px[i + 3] = Math.round(a * 255); }
+        else { px[i] = px[i + 1] = px[i + 2] = Math.round(a * 255); px[i + 3] = 255; }
+      }
+    }
+    g.putImageData(img, 0, 0);
     return c;
   }
 
@@ -308,8 +322,11 @@
       },
       /* Llamado desde el visor cuando el usuario toca una pieza */
       tocar: function (malla) {
-        if (this.resuelto || !malla || malla.userData.pieza === undefined) return true;
-        const casillero = this.orden.indexOf(malla.userData.pieza);
+        if (this.resuelto || !malla) return true;
+        let o = malla;
+        while (o && o.userData.pieza === undefined) o = o.parent;
+        if (!o) return true;
+        const casillero = this.orden.indexOf(o.userData.pieza);
         if (casillero < 0) return true;
         if (this.seleccion === null) { this.seleccion = casillero; this.resaltar(casillero, true); return true; }
         if (this.seleccion === casillero) { this.resaltar(casillero, false); this.seleccion = null; return true; }
@@ -347,34 +364,68 @@
     if (AFRAME.components["ra-ordenar"]) return;
     AFRAME.registerComponent("ra-ordenar", {
       schema: {
-        items: { type: "string" },                 // separadas por |
+        items: { type: "string" },                 // textos, separados por |
+        fotos: { type: "string" },                 // o direcciones de imágenes, separadas por |
         w: { type: "number", default: 1 }, h: { type: "number", default: 1 },
+        dir: { type: "string", default: "columna" },
         mensaje: { type: "string", default: "¡Muy bien!" },
       },
       init: function () {
-        const T = AFRAME.THREE;
-        const textos = this.data.items.split("|").map((t) => t.trim()).filter(Boolean);
-        if (!textos.length) return;
-        this.textos = textos;
+        const T = AFRAME.THREE, d = this.data;
+        const fotos = (d.fotos || "").split("|").map((t) => t.trim()).filter(Boolean);
+        const textos = (d.items || "").split("|").map((t) => t.trim()).filter(Boolean);
+        const n = fotos.length || textos.length;
+        if (!n) return;
+        this.textos = fotos.length ? null : textos;
         const grupo = new T.Group();
         this.el.setObject3D("mesh", grupo);
         this.grupo = grupo;
 
-        const n = textos.length;
-        const ancho = this.data.w * 0.86;
-        this.alto = (this.data.h * 0.92) / n;
-        const altoPlaca = this.alto * 0.84;
+        this.enFila = d.dir === "fila";
+        // cada pieza ocupa un casillero; el casillero es el ancho o el alto dividido en n
+        if (this.enFila) {
+          this.paso = (d.w * 0.94) / n;
+          this.anchoPieza = this.paso * 0.88;
+          this.altoPieza = Math.min(d.h * 0.8, this.anchoPieza * (fotos.length ? 1 : 0.5));
+        } else {
+          this.paso = (d.h * 0.92) / n;
+          this.anchoPieza = d.w * (fotos.length ? 0.55 : 0.86);
+          this.altoPieza = this.paso * 0.84;
+        }
 
-        this.piezas = textos.map((t) => {
-          const tex = new T.CanvasTexture(placaCanvas(t, altoPlaca / ancho));
-          tex.minFilter = T.LinearFilter;
-          const m = new T.Mesh(
-            new T.PlaneGeometry(ancho, altoPlaca),
-            new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide, depthWrite: false })
-          );
-          return m;
-        });
-        this.piezas.forEach((m, i) => { m.userData.pieza = i; grupo.add(m); });
+        const cargador = new T.TextureLoader();
+        this.piezas = [];
+        for (let i = 0; i < n; i++) {
+          const g = new T.Group();
+          if (fotos.length) {
+            // marco oscuro detrás, para que se despegue de la lámina
+            const marco = new T.Mesh(
+              new T.PlaneGeometry(this.anchoPieza * 1.06, this.altoPieza * 1.06),
+              new T.MeshBasicMaterial({ color: 0x14345f, side: T.DoubleSide })
+            );
+            marco.position.z = -0.002;
+            g.add(marco);
+            const tex = cargador.load(fotos[i]);
+            tex.minFilter = T.LinearFilter;
+            if ("colorSpace" in tex && T.SRGBColorSpace) tex.colorSpace = T.SRGBColorSpace;
+            const foto = new T.Mesh(
+              new T.PlaneGeometry(this.anchoPieza, this.altoPieza),
+              new T.MeshBasicMaterial({ map: tex, side: T.DoubleSide })
+            );
+            g.add(foto);
+          } else {
+            const tex = new T.CanvasTexture(placaCanvas(textos[i], this.altoPieza / this.anchoPieza));
+            tex.minFilter = T.LinearFilter;
+            g.add(new T.Mesh(
+              new T.PlaneGeometry(this.anchoPieza, this.altoPieza),
+              new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide, depthWrite: false })
+            ));
+          }
+          g.userData.pieza = i;
+          g.children.forEach((o) => { o.userData.pieza = i; });
+          grupo.add(g);
+          this.piezas.push(g);
+        }
         this.orden = this.piezas.map((_, i) => i);
         this.seleccion = null;
         this.resuelto = false;
@@ -382,7 +433,8 @@
       },
       posicionDe: function (casillero) {
         const n = this.piezas.length;
-        return { x: 0, y: (this.data.h * 0.92) / 2 - this.alto * (casillero + 0.5) };
+        if (this.enFila) return { x: -this.paso * (n - 1) / 2 + this.paso * casillero, y: 0 };
+        return { x: 0, y: this.paso * (n - 1) / 2 - this.paso * casillero };
       },
       colocar: function () {
         this.orden.forEach((pieza, casillero) => {
@@ -402,15 +454,18 @@
         this.colocar();
       },
       resaltar: function (casillero, si) {
-        const m = this.piezas[this.orden[casillero]];
-        if (!m) return;
-        m.material.color.setHex(si ? 0xffd27a : 0xffffff);
-        m.position.z = si ? 0.012 : 0;
-        m.scale.setScalar(si ? 1.05 : 1);
+        const g = this.piezas[this.orden[casillero]];
+        if (!g) return;
+        g.children.forEach((o) => { if (o.material) o.material.color.setHex(si ? 0xffd27a : (o === g.children[0] && g.children.length > 1 ? 0x14345f : 0xffffff)); });
+        g.position.z = si ? 0.012 : 0;
+        g.scale.setScalar(si ? 1.06 : 1);
       },
       tocar: function (malla) {
-        if (this.resuelto || !malla || malla.userData.pieza === undefined) return;
-        const casillero = this.orden.indexOf(malla.userData.pieza);
+        if (this.resuelto || !malla) return;
+        let o = malla;
+        while (o && o.userData.pieza === undefined) o = o.parent;
+        if (!o) return;
+        const casillero = this.orden.indexOf(o.userData.pieza);
         if (casillero < 0) return;
         if (this.seleccion === null) { this.seleccion = casillero; this.resaltar(casillero, true); return; }
         if (this.seleccion === casillero) { this.resaltar(casillero, false); this.seleccion = null; return; }
@@ -619,15 +674,18 @@
       const rot = num(c.rotacion, 0);
       const url = c.archivo ? paquete.url(c.archivo) : null;
 
-      const suave = Math.max(0, Math.min(0.45, num(c.suave, 0)));
+      const suave = Math.max(0, Math.min(0.45, num(c.suave, 0.12)));
 
       if (c.tipo === "ordenar") {
         const w = num(c.escala, 1), h = w * num(l.proporcion, 1);
-        const items = (c.items || []).join("|").replace(/[;:]/g, " ");
-        contenido = crear("a-entity", {
-          "ra-ordenar": `items: ${items}; w: ${w}; h: ${h}; mensaje: ${(c.mensaje || "¡Muy bien!").replace(/[;:]/g, " ")}`,
-          position: `${dx} ${dy} ${0.006 + dz}`,
-        }, ancla);
+        contenido = crear("a-entity", { position: `${dx} ${dy} ${0.006 + dz}` }, ancla);
+        contenido.setAttribute("ra-ordenar", {
+          items: (c.items || []).join("|"),
+          fotos: (c.archivos || []).map((a) => paquete.url(a)).join("|"),
+          w: w, h: h,
+          dir: c.direccion || "columna",
+          mensaje: c.mensaje || "¡Muy bien!",
+        });
       } else if (c.tipo === "imagen" && c.juego === "rompecabezas" && url) {
         const { w, h } = medidas(l, c);
         contenido = crear("a-entity", {

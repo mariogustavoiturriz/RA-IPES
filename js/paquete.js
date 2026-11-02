@@ -89,6 +89,9 @@
     for (const l of meta.laminas) {
       await cargar(l.imagen);
       if (l.contenido && l.contenido.archivo) await cargar(l.contenido.archivo);
+      if (l.contenido && Array.isArray(l.contenido.archivos)) {
+        for (const a of l.contenido.archivos) await cargar(a);
+      }
     }
     return {
       meta,
@@ -125,7 +128,17 @@
       const ajustes = Object.assign({}, c);
       delete ajustes.blob;
       delete ajustes.url;
+      delete ajustes.fotos;
       ajustes.archivo = rutaCont;
+      // una actividad de ordenar imágenes trae varias, numeradas en el orden correcto
+      if (Array.isArray(c.fotos) && c.fotos.length) {
+        ajustes.archivos = c.fotos.map((f, k) => {
+          const e = extension(f.nombre) || "jpg";
+          const ruta = "contenido/" + (i + 1) + "-" + (k + 1) + "." + e;
+          zip.file(ruta, f.blob);
+          return ruta;
+        });
+      }
       meta.laminas.push({
         nombre: l.nombre || "Lámina " + (i + 1),
         imagen: rutaImg,
