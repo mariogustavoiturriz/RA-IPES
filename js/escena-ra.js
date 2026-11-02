@@ -70,26 +70,54 @@
         el = document.createElement("video");
         el.setAttribute("playsinline", "");
         el.setAttribute("webkit-playsinline", "");
+        el.setAttribute("muted", "");
+        el.setAttribute("crossorigin", "anonymous");
         el.preload = "auto";
         el.loop = c.repetir !== false;
-        el.muted = silenciado || c.sonido === false;
         el.src = paquete.url(c.archivo);
         el.id = "ra-medio-" + i;
       } else if (c.tipo === "audio") {
         el = new Audio();
         el.preload = "auto";
         el.loop = c.repetir !== false;
-        el.muted = silenciado;
         el.src = paquete.url(c.archivo);
       }
       if (el) {
-        // "desbloqueo": play+pause dentro del gesto
+        el.muted = true; // arranca siempre en silencio; es la única forma de que el celular lo deje
+        const m = { indice: i, el, tipo: c.tipo, conSonido: c.sonido !== false, desbloqueado: false, falla: null };
+        el.addEventListener("error", () => { m.falla = codigoError(el); });
+        // "desbloqueo": play + pause dentro del toque del usuario
         const p = el.play();
-        if (p && p.then) p.then(() => el.pause()).catch(() => {});
-        medios.push({ indice: i, el, tipo: c.tipo, conSonido: c.sonido !== false });
+        if (p && p.then) p.then(() => { el.pause(); el.currentTime = 0; m.desbloqueado = true; }).catch(() => {});
+        medios.push(m);
       }
     });
     return medios;
+  }
+
+  function codigoError(el) {
+    const e = el.error;
+    if (!e) return null;
+    return {
+      1: "se canceló la carga del video",
+      2: "se cortó la descarga del video",
+      3: "el navegador no puede decodificar este video",
+      4: "este navegador no soporta el formato del video (probá convertirlo a MP4 H.264)",
+    }[e.code] || "no se pudo abrir el video";
+  }
+
+  function avisar(contenedor, texto) {
+    let d = contenedor.querySelector(".ra-diag");
+    if (!d) {
+      d = document.createElement("div");
+      d.className = "ra-diag";
+      d.style.cssText = "position:fixed;z-index:63;left:12px;right:12px;top:72px;max-width:520px;margin:0 auto;" +
+        "background:rgba(192,57,43,.94);color:#fff;padding:10px 14px;border-radius:12px;font:14px/1.4 system-ui,sans-serif";
+      contenedor.appendChild(d);
+    }
+    d.textContent = texto;
+    clearTimeout(d._t);
+    d._t = setTimeout(() => { d.remove(); }, 9000);
   }
 
   async function iniciar(contenedor, paquete, opciones) {
@@ -129,6 +157,30 @@
     crear("a-entity", { light: "type: directional; intensity: 1.6", position: "0.5 1 1" }, escena);
 
     const visibles = new Set();
+    let silencio = !!op.silenciado;
+
+    function reproducir(m) {
+      const el = m.el;
+      if (m.falla) { avisar(contenedor, "Lámina " + (m.indice + 1) + ": " + m.falla); return; }
+      // una vez que arrancó, recién ahí se le devuelve el sonido
+      el.addEventListener("playing", function alArrancar() {
+        el.removeEventListener("playing", alArrancar);
+        if (m.conSonido && !silencio) el.muted = false;
+      });
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {
+        el.muted = true;               // segundo intento, siempre en silencio
+        const q = el.play();
+        if (q && q.catch) q.catch(() => {
+          avisar(contenedor, m.falla || "El celular no dejó arrancar el video. Tocá la pantalla y volvé a apuntar a la lámina.");
+        });
+      });
+    }
+
+    // si el usuario toca la pantalla, reintentamos lo que esté a la vista
+    contenedor.addEventListener("click", () => {
+      visibles.forEach((i) => { const m = medioDe(i); if (m && m.el.paused) reproducir(m); });
+    });
 
     meta.laminas.forEach((l, i) => {
       const c = l.contenido || {};
@@ -142,7 +194,7 @@
         crear("a-video", {
           src: "#ra-medio-" + i, width: w, height: h,
           position: `${dx} ${dy} ${0.002 + dz}`, rotation: `0 0 ${rot}`,
-          material: "shader: flat; transparent: true; side: double",
+          material: "shader: flat; transparent: false; side: double",
         }, ancla);
       } else if (c.tipo === "imagen" && url) {
         const { w, h } = medidas(l, c);
@@ -171,7 +223,7 @@
       ancla.addEventListener("targetFound", () => {
         visibles.add(i);
         const m = medioDe(i);
-        if (m) { const p = m.el.play(); if (p && p.catch) p.catch(() => {}); }
+        if (m) reproducir(m);
         op.alEncontrar && op.alEncontrar(i, l);
       });
       ancla.addEventListener("targetLost", () => {
@@ -188,7 +240,13 @@
         ? "No se pudo usar la cámara. Revisá que el navegador tenga permiso y que ninguna otra aplicación la esté usando."
         : "Hubo un problema al arrancar la realidad aumentada.");
     });
-    window.__RA = { escena, visibles, medios }; // para diagnóstico y pruebas
+    window.__RA = {
+      escena, visibles, medios,
+      info: () => medios.map((m) => ({
+        lamina: m.indice + 1, tipo: m.tipo, listo: m.el.readyState, pausado: m.el.paused,
+        silencio: m.el.muted, ancho: m.el.videoWidth || null, falla: m.falla, desbloqueado: m.desbloqueado,
+      })),
+    };
 
     contenedor.appendChild(escena);
 
@@ -196,7 +254,8 @@
     return {
       escena,
       silenciar(si) {
-        medios.forEach((m) => { m.el.muted = si || !m.conSonido; });
+        silencio = !!si;
+        medios.forEach((m) => { m.el.muted = silencio || !m.conSonido || m.el.paused; });
       },
       detener() {
         if (detenida) return;
