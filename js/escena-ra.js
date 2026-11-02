@@ -94,27 +94,86 @@
     return medios;
   }
 
+  function textoCanvas(texto) {
+    const c = document.createElement("canvas");
+    c.width = 1024; c.height = 256;
+    const g = c.getContext("2d");
+    g.fillStyle = "rgba(20,52,95,0.93)";
+    if (g.roundRect) { g.beginPath(); g.roundRect(8, 8, c.width - 16, c.height - 16, 44); g.fill(); }
+    else g.fillRect(8, 8, c.width - 16, c.height - 16);
+    g.fillStyle = "#fff";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    let tam = 92;
+    do { g.font = "bold " + tam + "px system-ui, sans-serif"; tam -= 6; }
+    while (g.measureText(texto).width > c.width - 90 && tam > 28);
+    g.fillText(texto, c.width / 2, c.height / 2);
+    return c;
+  }
+
+  /* Dibuja la máscara que suaviza los bordes: blanco en el medio, que se va
+     desvaneciendo hacia afuera. Se usa igual en la escena y en la vista previa
+     del creador, así lo que ves al armar es lo que se ve después. */
+  function mascaraCanvas(aspecto, suavidad, conAlfa) {
+    const L = 256;
+    const c = document.createElement("canvas");
+    c.width = L;
+    c.height = Math.max(16, Math.round(L * (aspecto || 1)));
+    const g = c.getContext("2d");
+    // Para three.js hace falta fondo negro (lee el brillo); para el CSS de la vista
+    // previa hace falta fondo transparente (lee la transparencia).
+    if (!conAlfa) { g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height); }
+    const s = Math.max(0, Math.min(0.45, suavidad));
+    const m = Math.round(Math.min(c.width, c.height) * s * 0.5); // margen del desvanecido
+    const radio = Math.round(Math.min(c.width, c.height) * s * 0.6);
+    g.fillStyle = "#fff";
+    if (m > 0 && "filter" in g) g.filter = "blur(" + m + "px)";
+    const x = m * 1.2, y = m * 1.2, w = c.width - 2 * x, h = c.height - 2 * y;
+    if (g.roundRect) { g.beginPath(); g.roundRect(x, y, w, h, radio); g.fill(); }
+    else g.fillRect(x, y, w, h);
+    g.filter = "none";
+    return c;
+  }
+
   /* El plano del video lo armamos a mano con three.js. Si se deja que A-Frame lo
      tome de <a-assets>, el video queda en un contenedor con display:none y muchos
      Android entregan el sonido pero no los cuadros: se escucha y no se ve. */
   function registrarComponente() {
     if (AFRAME.components["ra-video"]) return;
     AFRAME.registerComponent("ra-video", {
-      schema: { id: { type: "string" }, w: { type: "number", default: 1 }, h: { type: "number", default: 1 } },
+      schema: {
+        id: { type: "string" }, src: { type: "string" },
+        w: { type: "number", default: 1 }, h: { type: "number", default: 1 },
+        suave: { type: "number", default: 0 },
+      },
       init: function () {
         const T = AFRAME.THREE;
-        const video = document.getElementById(this.data.id);
-        if (!video) return;
-        const tex = new T.VideoTexture(video);
+        let tex = null;
+        if (this.data.id) {
+          const video = document.getElementById(this.data.id);
+          if (!video) return;
+          tex = new T.VideoTexture(video);
+          this.video = video;
+        } else if (this.data.src) {
+          tex = new T.TextureLoader().load(this.data.src);
+        } else return;
         tex.minFilter = T.LinearFilter;
         tex.magFilter = T.LinearFilter;
         if ("colorSpace" in tex && T.SRGBColorSpace) tex.colorSpace = T.SRGBColorSpace;
         else if ("encoding" in tex && T.sRGBEncoding) tex.encoding = T.sRGBEncoding;
-        const mat = new T.MeshBasicMaterial({ map: tex, side: T.DoubleSide });
+        const opciones = { map: tex, side: T.DoubleSide };
+        if (this.data.suave > 0) {
+          const mascara = new T.CanvasTexture(mascaraCanvas(this.data.h / this.data.w, this.data.suave));
+          mascara.minFilter = T.LinearFilter;
+          opciones.alphaMap = mascara;
+          opciones.transparent = true;
+          opciones.depthWrite = false;
+        }
+        const mat = new T.MeshBasicMaterial(opciones);
         if ("toneMapped" in mat) mat.toneMapped = false;
         this.malla = new T.Mesh(new T.PlaneGeometry(this.data.w, this.data.h), mat);
+        this.malla.userData.lamina = this.el.dataset.lamina;
         this.el.setObject3D("mesh", this.malla);
-        this.video = video;
         this.textura = tex;
         this.cuadros = 0;
       },
@@ -135,8 +194,127 @@
         if (!this.malla) return;
         this.el.removeObject3D("mesh");
         this.malla.material.map && this.malla.material.map.dispose();
+        this.malla.material.alphaMap && this.malla.material.alphaMap.dispose();
         this.malla.material.dispose();
         this.malla.geometry.dispose();
+      },
+    });
+  }
+
+  /* Rompecabezas: la imagen se parte en una grilla y las piezas aparecen
+     desordenadas sobre la lámina. Se tocan de a dos para intercambiarlas. */
+  function registrarRompecabezas() {
+    if (AFRAME.components["ra-rompecabezas"]) return;
+    AFRAME.registerComponent("ra-rompecabezas", {
+      schema: {
+        src: { type: "string" },
+        w: { type: "number", default: 1 }, h: { type: "number", default: 1 },
+        cols: { type: "int", default: 3 }, filas: { type: "int", default: 3 },
+        pista: { type: "boolean", default: true },
+        mensaje: { type: "string", default: "¡Muy bien!" },
+      },
+      init: function () {
+        const T = AFRAME.THREE, d = this.data;
+        const grupo = new T.Group();
+        this.el.setObject3D("mesh", grupo);
+        this.grupo = grupo;
+        const tex = new T.TextureLoader().load(d.src);
+        tex.minFilter = T.LinearFilter;
+        if ("colorSpace" in tex && T.SRGBColorSpace) tex.colorSpace = T.SRGBColorSpace;
+        this.tex = tex;
+
+        if (d.pista) {
+          const pista = new T.Mesh(
+            new T.PlaneGeometry(d.w, d.h),
+            new T.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.16, depthWrite: false })
+          );
+          pista.position.z = -0.004;
+          pista.userData.pista = true;
+          grupo.add(pista);
+        }
+
+        const cw = d.w / d.cols, ch = d.h / d.filas;
+        this.piezas = [];
+        for (let r = 0; r < d.filas; r++) {
+          for (let c = 0; c < d.cols; c++) {
+            const g = new T.PlaneGeometry(cw * 0.94, ch * 0.94);
+            const u0 = c / d.cols, u1 = (c + 1) / d.cols;
+            const v0 = 1 - (r + 1) / d.filas, v1 = 1 - r / d.filas;
+            const uv = g.attributes.uv;
+            uv.setXY(0, u0, v1); uv.setXY(1, u1, v1); uv.setXY(2, u0, v0); uv.setXY(3, u1, v0);
+            uv.needsUpdate = true;
+            const m = new T.Mesh(g, new T.MeshBasicMaterial({ map: tex, side: T.DoubleSide }));
+            m.userData.pieza = r * d.cols + c;
+            grupo.add(m);
+            this.piezas.push(m);
+          }
+        }
+        this.orden = this.piezas.map((_, i) => i);   // orden[casillero] = pieza que está ahí
+        this.seleccion = null;
+        this.resuelto = false;
+        this.mezclar();
+      },
+
+      posicionDe: function (casillero) {
+        const d = this.data, cw = d.w / d.cols, ch = d.h / d.filas;
+        const c = casillero % d.cols, r = Math.floor(casillero / d.cols);
+        return { x: -d.w / 2 + cw * (c + 0.5), y: d.h / 2 - ch * (r + 0.5) };
+      },
+      colocar: function () {
+        this.orden.forEach((pieza, casillero) => {
+          const p = this.posicionDe(casillero);
+          this.piezas[pieza].position.set(p.x, p.y, 0);
+        });
+      },
+      estaResuelto: function () { return this.orden.every((pieza, casillero) => pieza === casillero); },
+      mezclar: function () {
+        let vueltas = 0;
+        do {
+          for (let i = this.orden.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const t = this.orden[i]; this.orden[i] = this.orden[j]; this.orden[j] = t;
+          }
+        } while (this.estaResuelto() && ++vueltas < 20);
+        this.colocar();
+      },
+      resaltar: function (casillero, si) {
+        const m = this.piezas[this.orden[casillero]];
+        if (!m) return;
+        m.material.color.setHex(si ? 0xffd27a : 0xffffff);
+        m.position.z = si ? 0.012 : 0;
+        m.scale.setScalar(si ? 1.07 : 1);
+      },
+      /* Llamado desde el visor cuando el usuario toca una pieza */
+      tocar: function (malla) {
+        if (this.resuelto || !malla || malla.userData.pieza === undefined) return true;
+        const casillero = this.orden.indexOf(malla.userData.pieza);
+        if (casillero < 0) return true;
+        if (this.seleccion === null) { this.seleccion = casillero; this.resaltar(casillero, true); return true; }
+        if (this.seleccion === casillero) { this.resaltar(casillero, false); this.seleccion = null; return true; }
+        this.resaltar(this.seleccion, false);
+        const a = this.seleccion, b = casillero;
+        const t = this.orden[a]; this.orden[a] = this.orden[b]; this.orden[b] = t;
+        this.seleccion = null;
+        this.colocar();
+        if (this.estaResuelto()) this.festejar();
+        return true;
+      },
+      festejar: function () {
+        const T = AFRAME.THREE, d = this.data;
+        this.resuelto = true;
+        this.piezas.forEach((m) => m.scale.setScalar(1 / 0.94));   // se cierran los huecos
+        this.grupo.children.forEach((o) => { if (o.userData.pista) o.visible = false; });
+        // El cartel va en la pantalla y no en la escena: así se ve siempre,
+        // esté la cámara cerca o lejos de la lámina.
+        this.el.emit("rompecabezas-resuelto", { mensaje: d.mensaje || "¡Muy bien!" }, true);
+      },
+      remove: function () {
+        if (!this.grupo) return;
+        this.grupo.traverse((o) => {
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) { o.material.map && o.material.map.dispose(); o.material.dispose(); }
+        });
+        this.el.removeObject3D("mesh");
       },
     });
   }
@@ -171,6 +349,7 @@
     if (typeof AFRAME === "undefined" || !window.MINDAR) throw new Error("No se cargaron las bibliotecas de RA (A-Frame / MindAR).");
     const meta = paquete.meta;
     registrarComponente();
+    registrarRompecabezas();
     const medios = prepararMedios(paquete, op.silenciado);
     const medioDe = (i) => medios.find((m) => m.indice === i);
 
@@ -227,41 +406,128 @@
       });
     }
 
-    // si el usuario toca la pantalla, reintentamos lo que esté a la vista
-    contenedor.addEventListener("click", () => {
-      visibles.forEach((i) => { const m = medioDe(i); if (m && m.el.paused) reproducir(m); });
+    /* ----- Agrandar y achicar con dos dedos ----- */
+    let escalaUsuario = 1, pellizco = null;
+
+    function aplicarEscala() {
+      Object.values(contenidos).forEach((e) => {
+        if (e.object3D) e.object3D.scale.set(escalaUsuario, escalaUsuario, escalaUsuario);
+      });
+    }
+    const separacion = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+    contenedor.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 2) pellizco = { d: separacion(e.touches), base: escalaUsuario };
+    }, { passive: true });
+    contenedor.addEventListener("touchmove", (e) => {
+      if (!pellizco || e.touches.length !== 2) return;
+      const k = separacion(e.touches) / (pellizco.d || 1);
+      escalaUsuario = Math.max(0.25, Math.min(4, pellizco.base * k));
+      aplicarEscala();
+      e.preventDefault();          // que no haga zoom la página
+    }, { passive: false });
+    contenedor.addEventListener("touchend", () => { pellizco = null; }, { passive: true });
+
+    // doble toque: vuelve al tamaño original
+    let ultimoToque = { t: 0, x: 0, y: 0 };
+    contenedor.addEventListener("click", (ev) => {
+      const ahora = Date.now();
+      const cerca = Math.hypot((ev.clientX || 0) - ultimoToque.x, (ev.clientY || 0) - ultimoToque.y) < 32;
+      if (ahora - ultimoToque.t < 350 && cerca) { escalaUsuario = 1; aplicarEscala(); }
+      ultimoToque = { t: ahora, x: ev.clientX || 0, y: ev.clientY || 0 };
     });
+
+    /* ----- Tocar para abrir un enlace ----- */
+    let botonEnlace = null;
+    function mostrarEnlace() {
+      const conEnlace = [...visibles].find((i) => enlaces[i]);
+      if (!conEnlace && conEnlace !== 0) {
+        if (botonEnlace) { botonEnlace.remove(); botonEnlace = null; }
+        return;
+      }
+      const url = enlaces[conEnlace];
+      if (!botonEnlace) {
+        botonEnlace = document.createElement("button");
+        botonEnlace.className = "btn ra-enlace";
+        contenedor.appendChild(botonEnlace);
+      }
+      let donde = url;
+      try { donde = new URL(url).hostname.replace(/^www\./, ""); } catch (e) {}
+      botonEnlace.textContent = "🔗 Abrir " + donde;
+      botonEnlace.onclick = (ev) => { ev.stopPropagation(); window.open(url, "_blank", "noopener"); };
+    }
+
+    // tocar directamente sobre el contenido también abre el enlace
+    function tocoElContenido(ev) {
+      const cam = escena.camera;
+      if (!cam) return null;
+      if (ev.clientX === undefined) return null;
+      const r = contenedor.getBoundingClientRect();
+      const punto = new AFRAME.THREE.Vector2(
+        ((ev.clientX - r.left) / r.width) * 2 - 1,
+        -((ev.clientY - r.top) / r.height) * 2 + 1
+      );
+      const rayo = new AFRAME.THREE.Raycaster();
+      rayo.setFromCamera(punto, cam);
+      const objetos = [];
+      Object.values(contenidos).forEach((e) => { if (e.object3D && e.object3D.visible) objetos.push(e.object3D); });
+      const choques = rayo.intersectObjects(objetos, true);
+      if (!choques.length) return null;
+      const objeto = choques[0].object;
+      let o = objeto;
+      while (o && o.el === undefined) o = o.parent;
+      return o && o.el ? { el: o.el, objeto } : null;
+    }
+
+    contenedor.addEventListener("click", (ev) => {
+      // si algo quedó pausado, lo reintentamos
+      visibles.forEach((i) => { const m = medioDe(i); if (m && m.el.paused) reproducir(m); });
+      const golpe = tocoElContenido(ev);
+      if (!golpe) return;
+      const rompe = golpe.el.components && golpe.el.components["ra-rompecabezas"];
+      if (rompe) { rompe.tocar(golpe.objeto); return; }   // el toque es del juego, no abre nada
+      const i = golpe.el.dataset.lamina;
+      if (i !== undefined && enlaces[i]) window.open(enlaces[i], "_blank", "noopener");
+    });
+
+    const contenidos = {};   // lo que aparece sobre cada lámina
+    const enlaces = {};      // dirección a abrir al tocar, por lámina
 
     meta.laminas.forEach((l, i) => {
       const c = l.contenido || {};
+      let contenido = null;
       const ancla = crear("a-entity", { "mindar-image-target": "targetIndex: " + i }, escena);
       const dx = num(c.dx, 0), dy = num(c.dy, 0), dz = num(c.dz, 0);
       const rot = num(c.rotacion, 0);
       const url = c.archivo ? paquete.url(c.archivo) : null;
 
-      if (c.tipo === "video" && url) {
+      const suave = Math.max(0, Math.min(0.45, num(c.suave, 0)));
+
+      if (c.tipo === "imagen" && c.juego === "rompecabezas" && url) {
         const { w, h } = medidas(l, c);
-        crear("a-entity", {
-          "ra-video": `id: ra-medio-${i}; w: ${w}; h: ${h}`,
-          position: `${dx} ${dy} ${0.002 + dz}`, rotation: `0 0 ${rot}`,
+        contenido = crear("a-entity", {
+          "ra-rompecabezas": `src: ${url}; w: ${w}; h: ${h}; cols: ${Math.max(2, num(c.cols, 3))};` +
+                             ` filas: ${Math.max(2, num(c.filas, 3))}; pista: ${c.pista !== false};` +
+                             ` mensaje: ${(c.mensaje || "¡Muy bien!").replace(/[;:]/g, " ")}`,
+          position: `${dx} ${dy} ${0.004 + dz}`, rotation: `0 0 ${rot}`,
         }, ancla);
-      } else if (c.tipo === "imagen" && url) {
+      } else if ((c.tipo === "video" || c.tipo === "imagen") && url) {
         const { w, h } = medidas(l, c);
-        crear("a-image", {
-          src: url, width: w, height: h,
+        contenido = crear("a-entity", {
+          "ra-video": (c.tipo === "video" ? `id: ra-medio-${i}` : `src: ${url}`) +
+                      `; w: ${w}; h: ${h}; suave: ${suave}`,
           position: `${dx} ${dy} ${0.002 + dz}`, rotation: `0 0 ${rot}`,
-          material: "shader: flat; transparent: true; alphaTest: 0.01; side: double",
         }, ancla);
       } else if (c.tipo === "modelo" && url) {
         const esc = num(c.escala, 0.6);
         const orient = c.orientacion === "pared" ? "0 0 0" : "90 0 0";
-        const base = crear("a-entity", { position: `${dx} ${dy} ${dz}`, rotation: orient }, ancla);
+        const base = contenido = crear("a-entity", { position: `${dx} ${dy} ${dz}`, rotation: orient }, ancla);
         const giro = crear("a-entity", { rotation: `0 ${rot} 0` }, base);
         if (c.girar) giro.setAttribute("animation", `property: rotation; from: 0 ${rot} 0; to: 0 ${rot + 360} 0; loop: true; dur: 9000; easing: linear`);
         crear("a-gltf-model", { src: url, scale: `${esc} ${esc} ${esc}` }, giro);
       } else if (c.tipo === "audio" && url) {
         const t = Math.max(0.12, num(c.escala, 0.3));
-        crear("a-image", {
+        contenido = crear("a-image", {
           src: dibujarIconoAudio(), width: t, height: t,
           position: `${dx} ${dy} 0.01`,
           material: "shader: flat; transparent: true",
@@ -269,18 +535,36 @@
         }, ancla);
       }
 
+      if (contenido) {
+        contenidos[i] = contenido;
+        contenido.dataset.lamina = i;
+      }
+      if (c.enlace && /^https?:\/\//i.test(c.enlace)) enlaces[i] = c.enlace;
+
       ancla.addEventListener("targetFound", () => {
         visibles.add(i);
         const m = medioDe(i);
         if (m) reproducir(m);
+        aplicarEscala();
+        mostrarEnlace();
         op.alEncontrar && op.alEncontrar(i, l);
       });
       ancla.addEventListener("targetLost", () => {
         visibles.delete(i);
         const m = medioDe(i);
         if (m) m.el.pause();
+        mostrarEnlace();
         op.alPerder && op.alPerder(i, l, visibles.size);
       });
+    });
+
+    escena.addEventListener("rompecabezas-resuelto", (ev) => {
+      const cartel = document.createElement("div");
+      cartel.className = "ra-festejo";
+      cartel.innerHTML = "<span>🎉</span>" + ((ev.detail && ev.detail.mensaje) || "¡Muy bien!");
+      contenedor.appendChild(cartel);
+      setTimeout(() => cartel.classList.add("se-va"), 3600);
+      setTimeout(() => cartel.remove(), 4400);
     });
 
     escena.addEventListener("arReady", () => { op.alListo && op.alListo(); });
@@ -338,5 +622,5 @@
     };
   }
 
-  window.EscenaRA = { iniciar, medidas };
+  window.EscenaRA = { iniciar, medidas, mascaraCanvas };
 })();

@@ -40,15 +40,18 @@
   <h1>Ver una experiencia</h1>
   <p class="bajada">Abrí un paquete de experiencia (.zip) y apuntá la cámara a la lámina. No se instala nada y no hace falta internet: todo pasa dentro del navegador.</p>
 
-  <label class="zona-soltar" id="zona">
-    <input type="file" id="archivo" accept=".zip,application/zip,application/x-zip-compressed" hidden>
-    <div style="font-size:40px">📦</div>
-    <b style="font-size:18px;color:var(--texto)">Abrir experiencia (.zip)</b><br>
-    <span class="chico">Tocá para elegir el archivo o arrastralo acá</span>
-  </label>
-  <div class="fila" style="margin-top:12px">
-    <button class="btn primario" id="btn-escanear">📷 Escanear código QR</button>
-    <span class="suave chico">Si el docente proyectó o imprimió un QR, con esto alcanza.</span>
+  <div class="entrada">
+    <label class="zona-soltar" id="zona">
+      <input type="file" id="archivo" accept=".zip,application/zip,application/x-zip-compressed" hidden>
+      <span class="icono">📦</span>
+      <b class="titulo">Abrir un archivo</b>
+      <span class="chico">Elegí el paquete .zip que te pasaron</span>
+    </label>
+    <button class="btn primario" id="btn-escanear">
+      <span class="icono">📷</span>
+      <b class="titulo">Escanear un QR</b>
+      <span class="chico">Si hay un código impreso o proyectado</span>
+    </button>
   </div>
   <div id="msg-inicio" class="oculto" style="margin-top:12px"></div>
 
@@ -260,7 +263,7 @@
     });
   }
 
-  async function abrirUrl(ruta) {
+  async function abrirUrl(ruta, alternativa) {
     const msg = $("#msg-inicio");
     mensaje(msg, "aviso", "Descargando la experiencia…");
     try {
@@ -269,6 +272,9 @@
       if (!r.ok) throw new Error("No se encontró el paquete (" + r.status + ").");
       await abrirBlob(await r.blob(), { url: ruta });
     } catch (e) {
+      // Si el paquete vive en otro sitio y ese sitio no deja descargarlo desde acá,
+      // simplemente vamos al visor de ese sitio: siempre funciona.
+      if (alternativa) { location.href = alternativa; return; }
       const m = String(e.message || "");
       mensaje(msg, "error", /fetch|Failed|NetworkError|CORS/i.test(m)
         ? "No se pudo descargar la experiencia desde ese sitio. Puede que no haya conexión, o que ese servidor no permita descargas desde otra página. Si el paquete está en Google Drive, no va a funcionar: conviene publicarlo en GitHub."
@@ -310,7 +316,9 @@
       mensaje(msg, "aviso", "Ese código no lleva a una experiencia de realidad aumentada. Contenía: <b>" + esc(texto.slice(0, 120)) + "</b>");
       return;
     }
-    abrirUrl(destino);
+    let deOtroSitio = false;
+    try { deOtroSitio = new URL(texto, location.href).origin !== location.origin; } catch (e) {}
+    abrirUrl(destino, deOtroSitio ? new URL(texto, location.href).href : null);
   }
 
   /* ---------- eventos ---------- */

@@ -60,9 +60,19 @@ p.bajada { color: var(--suave); font-size: 18px; margin-top: 0; max-width: 720px
 .chico { font-size: 14px; }
 .oculto { display: none !important; }
 .zona-soltar {
-  border: 2px dashed var(--borde); border-radius: var(--radio); padding: 26px 16px; text-align: center;
+  display: grid; justify-items: center; gap: 4px;
+  border: 2px dashed var(--borde); border-radius: var(--radio); padding: 24px 16px; text-align: center;
   color: var(--suave); transition: border-color .15s, background .15s; cursor: pointer; background: var(--tarjeta);
 }
+.zona-soltar .icono { font-size: 40px; line-height: 1; }
+.zona-soltar .titulo { font-size: 18px; color: var(--texto); }
+/* Las dos formas de abrir una experiencia, una al lado de la otra */
+.entrada { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; align-items: stretch; }
+.entrada > * { margin: 0; }
+.entrada .btn { justify-content: center; flex-direction: column; gap: 6px; padding: 24px 16px; border-radius: var(--radio); text-align: center; }
+.entrada .btn .icono { font-size: 40px; line-height: 1; }
+.entrada .btn .chico { font-weight: 400; opacity: .85; }
+@media (max-width: 560px) { .entrada { grid-template-columns: 1fr; } }
 .zona-soltar.encima { border-color: var(--azul-2); background: rgba(31,79,138,.06); }
 .aviso { border-left: 4px solid var(--aviso); background: rgba(241,184,15,.12); padding: 10px 14px; border-radius: 8px; }
 .error { border-left: 4px solid var(--mal); background: rgba(192,57,43,.1); padding: 10px 14px; border-radius: 8px; }
@@ -123,3 +133,28 @@ footer.pie { text-align: center; color: var(--suave); font-size: 14px; padding: 
   .hoja { max-width: none; }
   .hoja .salto { page-break-after: always; }
 }
+
+/* Pantallas angostas: que la fila de cada experiencia no se desborde */
+@media (max-width: 430px) {
+  .item-lista { flex-wrap: wrap; }
+  .item-lista .btn { flex: 1 1 100%; justify-content: center; }
+  .item-lista .info { flex: 1 1 60%; }
+}
+
+.ra-enlace {
+  position: fixed; z-index: 63; left: 50%; transform: translateX(-50%); bottom: 96px;
+  background: rgba(20,52,95,.92); color: #fff; border-color: rgba(255,255,255,.25);
+  backdrop-filter: blur(4px); max-width: 86vw;
+}
+
+/* Cartel de rompecabezas completado */
+.ra-festejo {
+  position: fixed; z-index: 64; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1);
+  background: rgba(20,52,95,.94); color: #fff; padding: 22px 30px; border-radius: 20px;
+  font-size: 26px; font-weight: 700; text-align: center; max-width: 84vw;
+  box-shadow: 0 10px 40px rgba(0,0,0,.45); animation: festejo .45s ease-out;
+  display: grid; gap: 8px; justify-items: center; transition: opacity .7s, transform .7s;
+}
+.ra-festejo span { font-size: 46px; }
+.ra-festejo.se-va { opacity: 0; transform: translate(-50%, -50%) scale(.9); }
+@keyframes festejo { from { transform: translate(-50%, -50%) scale(.6); opacity: 0; } }

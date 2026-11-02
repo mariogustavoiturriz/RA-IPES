@@ -16,6 +16,12 @@ Sistema libre para crear y ver experiencias de realidad aumentada (estilo Artivi
 2. En el repo: Settings → Pages → Source: *Deploy from a branch*, rama `main`, carpeta `/ (root)`.
 3. En un minuto queda en `https://USUARIO.github.io/ra-ipesfa/` con HTTPS (necesario para la cámara del celular).
 
+## Tipos de contenido
+
+Sobre cada lámina puede aparecer un video, una imagen, un modelo 3D (.glb), un audio o un **rompecabezas**. Si se elige una imagen, el creador pregunta si se muestra tal cual o si se parte en piezas. Las piezas salen desordenadas y se tocan de a dos para intercambiarlas; al completarlo aparece el mensaje que haya puesto el docente.
+
+También hay, por lámina: bordes suaves (el contenido se desvanece hacia los costados), y un enlace que se abre al tocar el contenido. Quien mira puede agrandar con dos dedos y volver al tamaño original con doble toque.
+
 ## Compartir una experiencia por QR
 
 Un QR no puede llevar el paquete adentro, solo una dirección: para que funcione, el `.zip` tiene que estar publicado.
