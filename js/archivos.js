@@ -10,6 +10,6 @@ var ARCHIVOS_APP = [
 ];
 /* Estos no se guardan para usar sin conexión en el celular (pesan mucho y no hacen falta ahí),
    pero sí van en el kit que se descarga para la notebook. */
-var ARCHIVOS_KIT_EXTRA = ["visor-un-archivo.html", "creador-un-archivo.html", "herramientas-armar-un-archivo.py"];
-var VERSION_APP = "1.1.0";
+var ARCHIVOS_KIT_EXTRA = ["visor-un-archivo.html", "creador-un-archivo.html", "servidor.py", "herramientas-armar-un-archivo.py"];
+var VERSION_APP = "1.2.0";
 if (typeof self !== "undefined") self.ARCHIVOS_APP = ARCHIVOS_APP;
