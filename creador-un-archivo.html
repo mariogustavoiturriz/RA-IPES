@@ -23559,6 +23559,28 @@ var qrcode = function() {
     return c;
   }
 
+  function placaCanvas(texto, proporcion) {
+    const W = 768, H = Math.max(96, Math.round(W * proporcion));
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    g.fillStyle = "rgba(250,247,240,0.97)";
+    const r = Math.min(H * 0.28, 46);
+    if (g.roundRect) { g.beginPath(); g.roundRect(4, 4, W - 8, H - 8, r); g.fill(); }
+    else g.fillRect(4, 4, W - 8, H - 8);
+    g.strokeStyle = "rgba(20,52,95,0.85)";
+    g.lineWidth = 6;
+    if (g.roundRect) { g.beginPath(); g.roundRect(4, 4, W - 8, H - 8, r); g.stroke(); }
+    g.fillStyle = "#14345f";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    let tam = Math.round(H * 0.46);
+    do { g.font = "bold " + tam + "px system-ui, sans-serif"; tam -= 4; }
+    while (g.measureText(texto).width > W - 60 && tam > 16);
+    g.fillText(texto, W / 2, H / 2);
+    return c;
+  }
+
   /* Dibuja la máscara que suaviza los bordes: blanco en el medio, que se va
      desvaneciendo hacia afuera. Se usa igual en la escena y en la vista previa
      del creador, así lo que ves al armar es lo que se ve después. */
@@ -23767,6 +23789,100 @@ var qrcode = function() {
     });
   }
 
+  /* Ordenar: las palabras o frases aparecen desordenadas, una debajo de la otra.
+     Se tocan de a dos para intercambiarlas, igual que el rompecabezas. */
+  function registrarOrdenar() {
+    if (AFRAME.components["ra-ordenar"]) return;
+    AFRAME.registerComponent("ra-ordenar", {
+      schema: {
+        items: { type: "string" },                 // separadas por |
+        w: { type: "number", default: 1 }, h: { type: "number", default: 1 },
+        mensaje: { type: "string", default: "¡Muy bien!" },
+      },
+      init: function () {
+        const T = AFRAME.THREE;
+        const textos = this.data.items.split("|").map((t) => t.trim()).filter(Boolean);
+        if (!textos.length) return;
+        this.textos = textos;
+        const grupo = new T.Group();
+        this.el.setObject3D("mesh", grupo);
+        this.grupo = grupo;
+
+        const n = textos.length;
+        const ancho = this.data.w * 0.86;
+        this.alto = (this.data.h * 0.92) / n;
+        const altoPlaca = this.alto * 0.84;
+
+        this.piezas = textos.map((t) => {
+          const tex = new T.CanvasTexture(placaCanvas(t, altoPlaca / ancho));
+          tex.minFilter = T.LinearFilter;
+          const m = new T.Mesh(
+            new T.PlaneGeometry(ancho, altoPlaca),
+            new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide, depthWrite: false })
+          );
+          return m;
+        });
+        this.piezas.forEach((m, i) => { m.userData.pieza = i; grupo.add(m); });
+        this.orden = this.piezas.map((_, i) => i);
+        this.seleccion = null;
+        this.resuelto = false;
+        this.mezclar();
+      },
+      posicionDe: function (casillero) {
+        const n = this.piezas.length;
+        return { x: 0, y: (this.data.h * 0.92) / 2 - this.alto * (casillero + 0.5) };
+      },
+      colocar: function () {
+        this.orden.forEach((pieza, casillero) => {
+          const p = this.posicionDe(casillero);
+          this.piezas[pieza].position.set(p.x, p.y, 0);
+        });
+      },
+      estaResuelto: function () { return this.orden.every((pieza, casillero) => pieza === casillero); },
+      mezclar: function () {
+        let vueltas = 0;
+        do {
+          for (let i = this.orden.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const t = this.orden[i]; this.orden[i] = this.orden[j]; this.orden[j] = t;
+          }
+        } while (this.estaResuelto() && ++vueltas < 20);
+        this.colocar();
+      },
+      resaltar: function (casillero, si) {
+        const m = this.piezas[this.orden[casillero]];
+        if (!m) return;
+        m.material.color.setHex(si ? 0xffd27a : 0xffffff);
+        m.position.z = si ? 0.012 : 0;
+        m.scale.setScalar(si ? 1.05 : 1);
+      },
+      tocar: function (malla) {
+        if (this.resuelto || !malla || malla.userData.pieza === undefined) return;
+        const casillero = this.orden.indexOf(malla.userData.pieza);
+        if (casillero < 0) return;
+        if (this.seleccion === null) { this.seleccion = casillero; this.resaltar(casillero, true); return; }
+        if (this.seleccion === casillero) { this.resaltar(casillero, false); this.seleccion = null; return; }
+        this.resaltar(this.seleccion, false);
+        const a = this.seleccion, b = casillero;
+        const t = this.orden[a]; this.orden[a] = this.orden[b]; this.orden[b] = t;
+        this.seleccion = null;
+        this.colocar();
+        if (this.estaResuelto()) {
+          this.resuelto = true;
+          this.el.emit("rompecabezas-resuelto", { mensaje: this.data.mensaje || "¡Muy bien!" }, true);
+        }
+      },
+      remove: function () {
+        if (!this.grupo) return;
+        this.grupo.traverse((o) => {
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) { o.material.map && o.material.map.dispose(); o.material.dispose(); }
+        });
+        this.el.removeObject3D("mesh");
+      },
+    });
+  }
+
   function codigoError(el) {
     const e = el.error;
     if (!e) return null;
@@ -23798,6 +23914,7 @@ var qrcode = function() {
     const meta = paquete.meta;
     registrarComponente();
     registrarRompecabezas();
+    registrarOrdenar();
     const medios = prepararMedios(paquete, op.silenciado);
     const medioDe = (i) => medios.find((m) => m.indice === i);
 
@@ -23932,8 +24049,9 @@ var qrcode = function() {
       visibles.forEach((i) => { const m = medioDe(i); if (m && m.el.paused) reproducir(m); });
       const golpe = tocoElContenido(ev);
       if (!golpe) return;
-      const rompe = golpe.el.components && golpe.el.components["ra-rompecabezas"];
-      if (rompe) { rompe.tocar(golpe.objeto); return; }   // el toque es del juego, no abre nada
+      const comps = golpe.el.components || {};
+      const juego = comps["ra-rompecabezas"] || comps["ra-ordenar"];
+      if (juego && juego.tocar) { juego.tocar(golpe.objeto); return; }   // el toque es del juego, no abre nada
       const i = golpe.el.dataset.lamina;
       if (i !== undefined && enlaces[i]) window.open(enlaces[i], "_blank", "noopener");
     });
@@ -23951,7 +24069,14 @@ var qrcode = function() {
 
       const suave = Math.max(0, Math.min(0.45, num(c.suave, 0)));
 
-      if (c.tipo === "imagen" && c.juego === "rompecabezas" && url) {
+      if (c.tipo === "ordenar") {
+        const w = num(c.escala, 1), h = w * num(l.proporcion, 1);
+        const items = (c.items || []).join("|").replace(/[;:]/g, " ");
+        contenido = crear("a-entity", {
+          "ra-ordenar": `items: ${items}; w: ${w}; h: ${h}; mensaje: ${(c.mensaje || "¡Muy bien!").replace(/[;:]/g, " ")}`,
+          position: `${dx} ${dy} ${0.006 + dz}`,
+        }, ancla);
+      } else if (c.tipo === "imagen" && c.juego === "rompecabezas" && url) {
         const { w, h } = medidas(l, c);
         contenido = crear("a-entity", {
           "ra-rompecabezas": `src: ${url}; w: ${w}; h: ${h}; cols: ${Math.max(2, num(c.cols, 3))};` +
@@ -24128,8 +24253,11 @@ var qrcode = function() {
     <h2>Compartir</h2>
     <div class="tarjeta" style="display:grid;gap:12px">
       <p class="suave" style="margin:0">Para que los demás la abran escaneando un QR, el paquete tiene que estar publicado en algún lado. Subí el <b id="nombre-zip">archivo .zip</b> a la carpeta <code>experiencias/</code> del sitio y poné acá la dirección del sitio.</p>
-      <label class="campo">Dirección del sitio
+      <label class="campo">Dirección del visor
         <input type="text" id="sitio" placeholder="https://usuario.github.io/ra-ipesfa/" inputmode="url">
+      </label>
+      <label class="campo">Dirección del paquete <span class="suave chico" style="font-weight:400">(solo si lo subís a otro lado distinto del visor)</span>
+        <input type="text" id="url-paquete" placeholder="https://otro-sitio/mi-experiencia.zip" inputmode="url">
       </label>
       <div id="caja-qr" class="oculto">
         <div class="fila" style="align-items:flex-start;gap:18px">
@@ -24174,6 +24302,7 @@ var qrcode = function() {
         <b>¿Qué aparece encima?</b>
         <div class="elegir" style="margin-top:6px">
           <label class="btn chico primario"><input type="file" class="in-contenido" accept="video/*,image/*,audio/*,.glb,.mp4,.webm,.mp3,.ogg,.m4a,.wav" hidden>Elegir archivo</label>
+          <button class="btn chico en-orden">🔤 Ordenar palabras</button>
           <span class="nombre nombre-contenido">Video, imagen, modelo 3D (.glb) o audio</span>
         </div>
         <div class="aviso-cont chico" style="margin-top:6px"></div>
@@ -24195,7 +24324,10 @@ var qrcode = function() {
           </select>
         </label>
         <label class="fila solo-juego oculto chico"><input type="checkbox" class="pista" checked> Dejar la imagen tenue de fondo, como pista</label>
-        <label class="campo solo-juego oculto">Mensaje al completarlo<input type="text" class="mensaje" value="¡Muy bien!" maxlength="40"></label>
+        <label class="campo con-mensaje oculto">Mensaje al completarlo<input type="text" class="mensaje" value="¡Muy bien!" maxlength="40"></label>
+        <label class="campo solo-orden oculto">Las palabras o frases, <b>en el orden correcto</b> (una por línea)
+          <textarea class="palabras" rows="5" placeholder="Comprender el problema&#10;Pensar un plan&#10;Llevarlo a cabo&#10;Mirar para atrás"></textarea></label>
+        <p class="chico suave solo-orden oculto" style="margin:0">Van a aparecer desordenadas. Se tocan de a dos para intercambiarlas.</p>
         <label class="campo plano">Forma
           <select class="ajuste">
             <option value="imagen">Cubrir la lámina exacta</option>
@@ -24282,7 +24414,7 @@ var qrcode = function() {
       nodo, imagen: null,
       contenido: null, // { tipo, blob, url, nombreArchivo, proporcion }
       ajustes: { ajuste: "imagen", escala: 1, dx: 0, dy: 0, dz: 0, rotacion: 0, orientacion: "mesa", girar: true, repetir: true, sonido: true, suavidad: 0.12, enlace: "",
-                 juego: "mostrar", piezas: "3x3", pista: true, mensaje: "¡Muy bien!" },
+                 juego: "mostrar", piezas: "3x3", pista: true, mensaje: "¡Muy bien!", palabras: "" },
       calidad: null,
     };
     laminas.push(L);
@@ -24301,17 +24433,27 @@ var qrcode = function() {
     };
     q(".in-imagen").onchange = alElegirImagen;
     q(".in-imagen2").onchange = alElegirImagen;
+    q(".en-orden").onclick = (e) => {
+      e.preventDefault();
+      if (L.contenido && L.contenido.url) URL.revokeObjectURL(L.contenido.url);
+      L.contenido = { tipo: "ordenar", blob: null, url: null, nombreArchivo: "", proporcion: null };
+      if (!L.ajustes.palabras) L.ajustes.palabras = "Comprender el problema\nPensar un plan\nLlevarlo a cabo\nMirar para atrás";
+      $(".aviso-cont", L.nodo).innerHTML = "";
+      sincronizarControles(L);
+      dibujarPrevia(L);
+      invalidar();
+    };
     q(".in-contenido").onchange = async (e) => {
       const f = e.target.files[0]; e.target.value = "";
       if (f) await ponerContenido(L, f, f.name);
     };
     const ctrl = ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "girar", "repetir", "sonido", "suavidad", "enlace",
-                  "juego", "piezas", "pista", "mensaje"];
+                  "juego", "piezas", "pista", "mensaje", "palabras"];
     ctrl.forEach((k) => {
       const el = q("." + k);
       el.addEventListener("input", () => {
         if (el.type === "checkbox") L.ajustes[k] = el.checked;
-        else if (el.tagName === "SELECT" || el.type === "text") L.ajustes[k] = el.value;
+        else if (el.tagName === "SELECT" || el.tagName === "TEXTAREA" || el.type === "text") L.ajustes[k] = el.value;
         else L.ajustes[k] = parseFloat(el.value);
         if (k === "juego") sincronizarControles(L);
         dibujarPrevia(L);
@@ -24355,7 +24497,7 @@ var qrcode = function() {
     const q = (s) => $(s, L.nodo);
     const a = L.ajustes, c = L.contenido;
     ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "suavidad", "enlace",
-     "juego", "piezas", "mensaje"].forEach((k) => { q("." + k).value = a[k]; });
+     "juego", "piezas", "mensaje", "palabras"].forEach((k) => { q("." + k).value = a[k]; });
     ["girar", "repetir", "sonido", "pista"].forEach((k) => { q("." + k).checked = !!a[k]; });
     const tipo = c ? c.tipo : null;
     q(".ajustes").classList.toggle("oculto", !tipo);
@@ -24363,12 +24505,17 @@ var qrcode = function() {
     L.nodo.querySelectorAll(".m3d").forEach((e) => e.classList.toggle("oculto", tipo !== "modelo"));
     L.nodo.querySelectorAll(".media").forEach((e) => e.classList.toggle("oculto", !(tipo === "video" || tipo === "audio")));
     L.nodo.querySelectorAll(".solo-video").forEach((e) => e.classList.toggle("oculto", tipo !== "video"));
+    const esOrden = tipo === "ordenar";
+    L.nodo.querySelectorAll(".solo-orden").forEach((e) => e.classList.toggle("oculto", !esOrden));
     const esJuego = tipo === "imagen" && a.juego === "rompecabezas";
+    L.nodo.querySelectorAll(".con-mensaje").forEach((e) => e.classList.toggle("oculto", !(esJuego || esOrden)));
     L.nodo.querySelectorAll(".solo-imagen").forEach((e) => e.classList.toggle("oculto", tipo !== "imagen"));
     L.nodo.querySelectorAll(".solo-juego").forEach((e) => e.classList.toggle("oculto", !esJuego));
     L.nodo.querySelectorAll(".solo-suave").forEach((e) => e.classList.toggle("oculto", esJuego));
-    const etiqueta = { video: "🎬 ", imagen: "🖼️ ", modelo: "🧊 ", audio: "🔊 " }[tipo] || "";
-    q(".nombre-contenido").textContent = c ? etiqueta + c.nombreArchivo + (c.blob ? " · " + tamano(c.blob.size) : "") : "Video, imagen, modelo 3D (.glb) o audio";
+    const etiqueta = { video: "🎬 ", imagen: "🖼️ ", modelo: "🧊 ", audio: "🔊 ", ordenar: "🔤 " }[tipo] || "";
+    q(".nombre-contenido").textContent = !c ? "Video, imagen, modelo 3D (.glb) o audio"
+      : (tipo === "ordenar" ? "🔤 Actividad de ordenar"
+         : etiqueta + c.nombreArchivo + (c.blob ? " · " + tamano(c.blob.size) : ""));
   }
 
   function dibujarPrevia(L) {
@@ -24405,6 +24552,24 @@ var qrcode = function() {
       el.textContent = c.tipo === "modelo" ? "🧊" : "🔊";
       el.style.fontSize = Math.max(22, w * 0.45) + "px";
       rot = 0;
+    }
+    if (c.tipo === "ordenar") {
+      const lista = (a.palabras || "").split("\n").map((t) => t.trim()).filter(Boolean);
+      const caja = document.createElement("div");
+      caja.className = "encima";
+      const W = previa.clientWidth || 400, H = W * L.imagen.proporcion;
+      caja.style.cssText = `width:${W * 0.86}px;height:${H * 0.92}px;left:${W * 0.07}px;top:${H * 0.04}px;` +
+        `transform:none;outline:none;display:grid;gap:${Math.max(2, H * 0.02)}px;align-content:stretch;` +
+        `grid-template-rows:repeat(${Math.max(1, lista.length)},1fr)`;
+      lista.forEach((t) => {
+        const d = document.createElement("div");
+        d.textContent = t;
+        d.style.cssText = "background:rgba(250,247,240,.97);border:2px solid rgba(20,52,95,.85);border-radius:8px;" +
+          "color:#14345f;font-weight:700;display:grid;place-items:center;text-align:center;font-size:12px;overflow:hidden;padding:0 4px";
+        caja.appendChild(d);
+      });
+      previa.appendChild(caja);
+      return;
     }
     const juega = c.tipo === "imagen" && a.juego === "rompecabezas";
     if (juega) {
@@ -24526,6 +24691,12 @@ var qrcode = function() {
     const a = L.ajustes, t = L.contenido.tipo;
     const base = { escala: a.escala, dx: a.dx, dy: a.dy };
     if ((a.enlace || "").trim()) base.enlace = a.enlace.trim();
+    if (t === "ordenar") {
+      return Object.assign(base, {
+        items: (a.palabras || "").split("\n").map((x) => x.trim()).filter(Boolean),
+        mensaje: (a.mensaje || "¡Muy bien!").trim(),
+      });
+    }
     const juega = t === "imagen" && a.juego === "rompecabezas";
     if (t === "video" || t === "imagen") Object.assign(base, { ajuste: a.ajuste, rotacion: a.rotacion });
     if ((t === "video" || t === "imagen") && !juega) base.suave = a.suavidad;
@@ -24599,8 +24770,10 @@ var qrcode = function() {
         const guardados = Object.assign({}, c);
         if ("suave" in guardados) { guardados.suavidad = guardados.suave; delete guardados.suave; }
         if (guardados.juego === "rompecabezas") guardados.piezas = (guardados.cols || 3) + "x" + (guardados.filas || 3);
+        if (Array.isArray(guardados.items)) guardados.palabras = guardados.items.join("\n");
         const datos = { nombre: l.nombre, imagen: img, ajustes: guardados, calidad: null };
         if (blobC) datos.contenido = { tipo: c.tipo, blob: blobC, url: URL.createObjectURL(blobC), nombreArchivo, proporcion: c.proporcion || null };
+        if (c.tipo === "ordenar") datos.contenido = { tipo: "ordenar", blob: null, url: null, nombreArchivo: "", proporcion: null };
         nuevaLamina(datos);
       }
       mindCache = null;
@@ -24619,8 +24792,10 @@ var qrcode = function() {
     if (!base) return null;
     if (!/^https?:\/\//i.test(base)) base = "https://" + base;
     if (!base.endsWith("/")) base += "/";
+    let paquete = $("#url-paquete").value.trim();
+    if (paquete && !/^https?:\/\//i.test(paquete)) paquete = "https://" + paquete;
     try {
-      return new URL("visor.html?p=" + encodeURIComponent("experiencias/" + nombreArchivoZip()), base).href;
+      return new URL("visor.html?p=" + encodeURIComponent(paquete || ("experiencias/" + nombreArchivoZip())), base).href;
     } catch (e) { return null; }
   }
   function dibujarQR() {
@@ -24679,6 +24854,7 @@ var qrcode = function() {
     setTimeout(() => { try { v.print(); } catch (e) {} }, 600);
   }
   $("#sitio").addEventListener("input", dibujarQR);
+  $("#url-paquete").addEventListener("input", dibujarQR);
   $("#imprimir").onclick = hojaParaImprimir;
   $("#titulo").addEventListener("input", () => { if (!$("#compartir").classList.contains("oculto")) dibujarQR(); });
   try { const g = localStorage.getItem("ra-sitio"); if (g) $("#sitio").value = g; } catch (e) {}

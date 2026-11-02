@@ -12,10 +12,32 @@ self.addEventListener("activate", (e) => {
     .then(() => self.clients.claim()));
 });
 
+/* Cuando alguien comparte un .zip con esta aplicación desde el menú de compartir
+   del celular, llega acá como POST. Lo guardamos un momento y mandamos al visor. */
+const BUZON = "ra-compartido";
+const RUTA_BUZON = new URL("paquete-compartido.zip", self.registration.scope).href;
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
-  if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
   const url = new URL(req.url);
+
+  if (req.method === "POST" && url.pathname.endsWith("/recibir-compartido")) {
+    e.respondWith((async () => {
+      try {
+        const datos = await req.formData();
+        const archivo = datos.get("paquete");
+        if (archivo) {
+          const buzon = await caches.open(BUZON);
+          await buzon.put(RUTA_BUZON, new Response(archivo, { headers: { "Content-Type": "application/zip" } }));
+          return Response.redirect(new URL("visor.html?compartido=1", self.registration.scope).href, 303);
+        }
+      } catch (err) { /* abajo */ }
+      return Response.redirect(new URL("visor.html?compartido=error", self.registration.scope).href, 303);
+    })());
+    return;
+  }
+
+  if (req.method !== "GET" || url.origin !== location.origin) return;
   // La galería y sus paquetes: primero la red (para ver lo nuevo), si no hay conexión, lo guardado
   if (url.pathname.includes("/experiencias/")) {
     e.respondWith(fetch(req).then((r) => {

@@ -2,9 +2,23 @@
   "name": "Realidad aumentada · IPESfa",
   "short_name": "RA IPESfa",
   "start_url": "index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#faf7f0",
   "theme_color": "#14345f",
   "lang": "es-AR",
-  "icons": [{ "src": "img/icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [{ "src": "img/icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }],
+  "share_target": {
+    "action": "recibir-compartido",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "titulo",
+      "text": "texto",
+      "url": "direccion",
+      "files": [
+        { "name": "paquete", "accept": ["application/zip", "application/x-zip-compressed", "application/octet-stream", ".zip"] }
+      ]
+    }
+  }
 }

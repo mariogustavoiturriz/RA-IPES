@@ -102,8 +102,11 @@
     <h2>Compartir</h2>
     <div class="tarjeta" style="display:grid;gap:12px">
       <p class="suave" style="margin:0">Para que los demás la abran escaneando un QR, el paquete tiene que estar publicado en algún lado. Subí el <b id="nombre-zip">archivo .zip</b> a la carpeta <code>experiencias/</code> del sitio y poné acá la dirección del sitio.</p>
-      <label class="campo">Dirección del sitio
+      <label class="campo">Dirección del visor
         <input type="text" id="sitio" placeholder="https://usuario.github.io/ra-ipesfa/" inputmode="url">
+      </label>
+      <label class="campo">Dirección del paquete <span class="suave chico" style="font-weight:400">(solo si lo subís a otro lado distinto del visor)</span>
+        <input type="text" id="url-paquete" placeholder="https://otro-sitio/mi-experiencia.zip" inputmode="url">
       </label>
       <div id="caja-qr" class="oculto">
         <div class="fila" style="align-items:flex-start;gap:18px">
@@ -148,6 +151,7 @@
         <b>¿Qué aparece encima?</b>
         <div class="elegir" style="margin-top:6px">
           <label class="btn chico primario"><input type="file" class="in-contenido" accept="video/*,image/*,audio/*,.glb,.mp4,.webm,.mp3,.ogg,.m4a,.wav" hidden>Elegir archivo</label>
+          <button class="btn chico en-orden">🔤 Ordenar palabras</button>
           <span class="nombre nombre-contenido">Video, imagen, modelo 3D (.glb) o audio</span>
         </div>
         <div class="aviso-cont chico" style="margin-top:6px"></div>
@@ -169,7 +173,10 @@
           </select>
         </label>
         <label class="fila solo-juego oculto chico"><input type="checkbox" class="pista" checked> Dejar la imagen tenue de fondo, como pista</label>
-        <label class="campo solo-juego oculto">Mensaje al completarlo<input type="text" class="mensaje" value="¡Muy bien!" maxlength="40"></label>
+        <label class="campo con-mensaje oculto">Mensaje al completarlo<input type="text" class="mensaje" value="¡Muy bien!" maxlength="40"></label>
+        <label class="campo solo-orden oculto">Las palabras o frases, <b>en el orden correcto</b> (una por línea)
+          <textarea class="palabras" rows="5" placeholder="Comprender el problema&#10;Pensar un plan&#10;Llevarlo a cabo&#10;Mirar para atrás"></textarea></label>
+        <p class="chico suave solo-orden oculto" style="margin:0">Van a aparecer desordenadas. Se tocan de a dos para intercambiarlas.</p>
         <label class="campo plano">Forma
           <select class="ajuste">
             <option value="imagen">Cubrir la lámina exacta</option>
@@ -256,7 +263,7 @@
       nodo, imagen: null,
       contenido: null, // { tipo, blob, url, nombreArchivo, proporcion }
       ajustes: { ajuste: "imagen", escala: 1, dx: 0, dy: 0, dz: 0, rotacion: 0, orientacion: "mesa", girar: true, repetir: true, sonido: true, suavidad: 0.12, enlace: "",
-                 juego: "mostrar", piezas: "3x3", pista: true, mensaje: "¡Muy bien!" },
+                 juego: "mostrar", piezas: "3x3", pista: true, mensaje: "¡Muy bien!", palabras: "" },
       calidad: null,
     };
     laminas.push(L);
@@ -275,17 +282,27 @@
     };
     q(".in-imagen").onchange = alElegirImagen;
     q(".in-imagen2").onchange = alElegirImagen;
+    q(".en-orden").onclick = (e) => {
+      e.preventDefault();
+      if (L.contenido && L.contenido.url) URL.revokeObjectURL(L.contenido.url);
+      L.contenido = { tipo: "ordenar", blob: null, url: null, nombreArchivo: "", proporcion: null };
+      if (!L.ajustes.palabras) L.ajustes.palabras = "Comprender el problema\nPensar un plan\nLlevarlo a cabo\nMirar para atrás";
+      $(".aviso-cont", L.nodo).innerHTML = "";
+      sincronizarControles(L);
+      dibujarPrevia(L);
+      invalidar();
+    };
     q(".in-contenido").onchange = async (e) => {
       const f = e.target.files[0]; e.target.value = "";
       if (f) await ponerContenido(L, f, f.name);
     };
     const ctrl = ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "girar", "repetir", "sonido", "suavidad", "enlace",
-                  "juego", "piezas", "pista", "mensaje"];
+                  "juego", "piezas", "pista", "mensaje", "palabras"];
     ctrl.forEach((k) => {
       const el = q("." + k);
       el.addEventListener("input", () => {
         if (el.type === "checkbox") L.ajustes[k] = el.checked;
-        else if (el.tagName === "SELECT" || el.type === "text") L.ajustes[k] = el.value;
+        else if (el.tagName === "SELECT" || el.tagName === "TEXTAREA" || el.type === "text") L.ajustes[k] = el.value;
         else L.ajustes[k] = parseFloat(el.value);
         if (k === "juego") sincronizarControles(L);
         dibujarPrevia(L);
@@ -329,7 +346,7 @@
     const q = (s) => $(s, L.nodo);
     const a = L.ajustes, c = L.contenido;
     ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "suavidad", "enlace",
-     "juego", "piezas", "mensaje"].forEach((k) => { q("." + k).value = a[k]; });
+     "juego", "piezas", "mensaje", "palabras"].forEach((k) => { q("." + k).value = a[k]; });
     ["girar", "repetir", "sonido", "pista"].forEach((k) => { q("." + k).checked = !!a[k]; });
     const tipo = c ? c.tipo : null;
     q(".ajustes").classList.toggle("oculto", !tipo);
@@ -337,12 +354,17 @@
     L.nodo.querySelectorAll(".m3d").forEach((e) => e.classList.toggle("oculto", tipo !== "modelo"));
     L.nodo.querySelectorAll(".media").forEach((e) => e.classList.toggle("oculto", !(tipo === "video" || tipo === "audio")));
     L.nodo.querySelectorAll(".solo-video").forEach((e) => e.classList.toggle("oculto", tipo !== "video"));
+    const esOrden = tipo === "ordenar";
+    L.nodo.querySelectorAll(".solo-orden").forEach((e) => e.classList.toggle("oculto", !esOrden));
     const esJuego = tipo === "imagen" && a.juego === "rompecabezas";
+    L.nodo.querySelectorAll(".con-mensaje").forEach((e) => e.classList.toggle("oculto", !(esJuego || esOrden)));
     L.nodo.querySelectorAll(".solo-imagen").forEach((e) => e.classList.toggle("oculto", tipo !== "imagen"));
     L.nodo.querySelectorAll(".solo-juego").forEach((e) => e.classList.toggle("oculto", !esJuego));
     L.nodo.querySelectorAll(".solo-suave").forEach((e) => e.classList.toggle("oculto", esJuego));
-    const etiqueta = { video: "🎬 ", imagen: "🖼️ ", modelo: "🧊 ", audio: "🔊 " }[tipo] || "";
-    q(".nombre-contenido").textContent = c ? etiqueta + c.nombreArchivo + (c.blob ? " · " + tamano(c.blob.size) : "") : "Video, imagen, modelo 3D (.glb) o audio";
+    const etiqueta = { video: "🎬 ", imagen: "🖼️ ", modelo: "🧊 ", audio: "🔊 ", ordenar: "🔤 " }[tipo] || "";
+    q(".nombre-contenido").textContent = !c ? "Video, imagen, modelo 3D (.glb) o audio"
+      : (tipo === "ordenar" ? "🔤 Actividad de ordenar"
+         : etiqueta + c.nombreArchivo + (c.blob ? " · " + tamano(c.blob.size) : ""));
   }
 
   function dibujarPrevia(L) {
@@ -379,6 +401,24 @@
       el.textContent = c.tipo === "modelo" ? "🧊" : "🔊";
       el.style.fontSize = Math.max(22, w * 0.45) + "px";
       rot = 0;
+    }
+    if (c.tipo === "ordenar") {
+      const lista = (a.palabras || "").split("\n").map((t) => t.trim()).filter(Boolean);
+      const caja = document.createElement("div");
+      caja.className = "encima";
+      const W = previa.clientWidth || 400, H = W * L.imagen.proporcion;
+      caja.style.cssText = `width:${W * 0.86}px;height:${H * 0.92}px;left:${W * 0.07}px;top:${H * 0.04}px;` +
+        `transform:none;outline:none;display:grid;gap:${Math.max(2, H * 0.02)}px;align-content:stretch;` +
+        `grid-template-rows:repeat(${Math.max(1, lista.length)},1fr)`;
+      lista.forEach((t) => {
+        const d = document.createElement("div");
+        d.textContent = t;
+        d.style.cssText = "background:rgba(250,247,240,.97);border:2px solid rgba(20,52,95,.85);border-radius:8px;" +
+          "color:#14345f;font-weight:700;display:grid;place-items:center;text-align:center;font-size:12px;overflow:hidden;padding:0 4px";
+        caja.appendChild(d);
+      });
+      previa.appendChild(caja);
+      return;
     }
     const juega = c.tipo === "imagen" && a.juego === "rompecabezas";
     if (juega) {
@@ -500,6 +540,12 @@
     const a = L.ajustes, t = L.contenido.tipo;
     const base = { escala: a.escala, dx: a.dx, dy: a.dy };
     if ((a.enlace || "").trim()) base.enlace = a.enlace.trim();
+    if (t === "ordenar") {
+      return Object.assign(base, {
+        items: (a.palabras || "").split("\n").map((x) => x.trim()).filter(Boolean),
+        mensaje: (a.mensaje || "¡Muy bien!").trim(),
+      });
+    }
     const juega = t === "imagen" && a.juego === "rompecabezas";
     if (t === "video" || t === "imagen") Object.assign(base, { ajuste: a.ajuste, rotacion: a.rotacion });
     if ((t === "video" || t === "imagen") && !juega) base.suave = a.suavidad;
@@ -573,8 +619,10 @@
         const guardados = Object.assign({}, c);
         if ("suave" in guardados) { guardados.suavidad = guardados.suave; delete guardados.suave; }
         if (guardados.juego === "rompecabezas") guardados.piezas = (guardados.cols || 3) + "x" + (guardados.filas || 3);
+        if (Array.isArray(guardados.items)) guardados.palabras = guardados.items.join("\n");
         const datos = { nombre: l.nombre, imagen: img, ajustes: guardados, calidad: null };
         if (blobC) datos.contenido = { tipo: c.tipo, blob: blobC, url: URL.createObjectURL(blobC), nombreArchivo, proporcion: c.proporcion || null };
+        if (c.tipo === "ordenar") datos.contenido = { tipo: "ordenar", blob: null, url: null, nombreArchivo: "", proporcion: null };
         nuevaLamina(datos);
       }
       mindCache = null;
@@ -593,8 +641,10 @@
     if (!base) return null;
     if (!/^https?:\/\//i.test(base)) base = "https://" + base;
     if (!base.endsWith("/")) base += "/";
+    let paquete = $("#url-paquete").value.trim();
+    if (paquete && !/^https?:\/\//i.test(paquete)) paquete = "https://" + paquete;
     try {
-      return new URL("visor.html?p=" + encodeURIComponent("experiencias/" + nombreArchivoZip()), base).href;
+      return new URL("visor.html?p=" + encodeURIComponent(paquete || ("experiencias/" + nombreArchivoZip())), base).href;
     } catch (e) { return null; }
   }
   function dibujarQR() {
@@ -653,6 +703,7 @@
     setTimeout(() => { try { v.print(); } catch (e) {} }, 600);
   }
   $("#sitio").addEventListener("input", dibujarQR);
+  $("#url-paquete").addEventListener("input", dibujarQR);
   $("#imprimir").onclick = hojaParaImprimir;
   $("#titulo").addEventListener("input", () => { if (!$("#compartir").classList.contains("oculto")) dibujarQR(); });
   try { const g = localStorage.getItem("ra-sitio"); if (g) $("#sitio").value = g; } catch (e) {}

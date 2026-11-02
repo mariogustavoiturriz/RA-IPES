@@ -18,7 +18,11 @@ Sistema libre para crear y ver experiencias de realidad aumentada (estilo Artivi
 
 ## Tipos de contenido
 
-Sobre cada lámina puede aparecer un video, una imagen, un modelo 3D (.glb), un audio o un **rompecabezas**. Si se elige una imagen, el creador pregunta si se muestra tal cual o si se parte en piezas. Las piezas salen desordenadas y se tocan de a dos para intercambiarlas; al completarlo aparece el mensaje que haya puesto el docente.
+Sobre cada lámina puede aparecer un video, una imagen, un modelo 3D (.glb), un audio, un **rompecabezas** o una actividad de **ordenar palabras**. Si se elige una imagen, el creador pregunta si se muestra tal cual o si se parte en piezas. Las piezas salen desordenadas y se tocan de a dos para intercambiarlas; al completarlo aparece el mensaje que haya puesto el docente.
+
+Para ordenar palabras no hace falta ningún archivo: se escriben las frases en el orden correcto, una por línea, y el sistema las muestra desordenadas. Se acomodan con el mismo gesto de tocar de a dos.
+
+En la galería hay un ejemplo de las dos cosas: **Dos actividades para tocar** (rompecabezas del teorema de Pitágoras y los cuatro pasos de Pólya). Las láminas para imprimir están en `ejemplos/pitagoras.jpg` y `ejemplos/problemas.jpg`.
 
 También hay, por lámina: bordes suaves (el contenido se desvanece hacia los costados), y un enlace que se abre al tocar el contenido. Quien mira puede agrandar con dos dedos y volver al tamaño original con doble toque.
 
@@ -41,6 +45,15 @@ Importante: si el paquete queda en Google Drive no va a funcionar, porque Drive 
 3. Para que también quede disponible sin conexión, agregarlo a `js/archivos.js` y subir `VERSION_APP`.
 
 Un QR directo a una experiencia: `https://USUARIO.github.io/ra-ipesfa/visor.html?p=experiencias/ARCHIVO.zip` (el visor lo genera con el botón *QR para el celular*).
+
+## Independencia: visor y paquete van por separado
+
+El visor y el paquete no tienen por qué estar en el mismo lugar, ni pertenecer a la misma persona.
+
+- Cualquiera puede publicar **su propia copia del sistema** (es todo estático: no hay servidor ni cuentas). El QR que arma el creador apunta al visor que vos le indiques.
+- El paquete puede vivir en otro lado: en el creador hay un campo para poner su dirección completa.
+- El visor abre el QR de cualquier sitio. Si ese sitio no permite la descarga cruzada, el visor manda al visor de esa persona en vez de fallar.
+- **Instalado en el celular**, el visor aparece en el menú de compartir de Android: un `.zip` que llegue por WhatsApp, mail o Drive se abre tocando Compartir y eligiendo la aplicación. Sin hosting de por medio.
 
 ## Uso sin internet
 

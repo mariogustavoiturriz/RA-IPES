@@ -53,6 +53,11 @@
       <span class="chico">Si hay un código impreso o proyectado</span>
     </button>
   </div>
+  <div id="caja-instalar" class="tarjeta oculto" style="margin-top:14px">
+    <b>Tenelo siempre a mano</b>
+    <p class="suave chico" style="margin:4px 0 10px">Si lo instalás, abre sin conexión y además aparece en el menú de compartir del celular: cualquier experiencia que te manden por WhatsApp, mail o Drive se abre tocando Compartir.</p>
+    <button class="btn primario" id="btn-instalar">⬇️ Instalar en este dispositivo</button>
+  </div>
   <div id="msg-inicio" class="oculto" style="margin-top:12px"></div>
 
   <section id="sec-mias" class="oculto">
@@ -294,6 +299,27 @@
     caja.classList.remove("oculto");
   }
 
+  /* ---------- lo que llega desde el menú de compartir del celular ---------- */
+  async function abrirCompartido(estado) {
+    const msg = $("#msg-inicio");
+    if (estado === "error") {
+      mensaje(msg, "error", "No pude recibir el archivo que compartiste. Probá abrirlo con el botón de arriba.");
+      return;
+    }
+    try {
+      const buzon = await caches.open("ra-compartido");
+      const ruta = new URL("paquete-compartido.zip", location.href.replace(/[^/]*$/, "")).href;
+      const r = await buzon.match(ruta);
+      if (!r) { mensaje(msg, "aviso", "No encontré el archivo compartido."); return; }
+      const blob = await r.blob();
+      await buzon.delete(ruta);
+      history.replaceState(null, "", location.pathname);
+      abrirBlob(blob);
+    } catch (e) {
+      mensaje(msg, "error", "No pude leer el archivo compartido: " + esc(e.message || ""));
+    }
+  }
+
   /* ---------- QR ---------- */
   async function escanear() {
     const msg = $("#msg-inicio");
@@ -334,9 +360,27 @@
   $("#btn-qr").addEventListener("click", mostrarQR);
   $("#btn-escanear").addEventListener("click", escanear);
 
+  let propuestaInstalar = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    propuestaInstalar = e;
+    $("#caja-instalar").classList.remove("oculto");
+  });
+  $("#btn-instalar").addEventListener("click", async () => {
+    if (!propuestaInstalar) return;
+    propuestaInstalar.prompt();
+    await propuestaInstalar.userChoice;
+    propuestaInstalar = null;
+    $("#caja-instalar").classList.add("oculto");
+  });
+  window.addEventListener("appinstalled", () => $("#caja-instalar").classList.add("oculto"));
+
   cargarMias();
   cargarGaleria();
-  const p = new URLSearchParams(location.search).get("p");
+  const params = new URLSearchParams(location.search);
+  const compartido = params.get("compartido");
+  if (compartido) abrirCompartido(compartido);
+  const p = params.get("p");
   if (p && Paquete.esOnline()) abrirUrl(p);
   if (Paquete.esOnline() && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

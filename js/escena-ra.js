@@ -111,6 +111,28 @@
     return c;
   }
 
+  function placaCanvas(texto, proporcion) {
+    const W = 768, H = Math.max(96, Math.round(W * proporcion));
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    g.fillStyle = "rgba(250,247,240,0.97)";
+    const r = Math.min(H * 0.28, 46);
+    if (g.roundRect) { g.beginPath(); g.roundRect(4, 4, W - 8, H - 8, r); g.fill(); }
+    else g.fillRect(4, 4, W - 8, H - 8);
+    g.strokeStyle = "rgba(20,52,95,0.85)";
+    g.lineWidth = 6;
+    if (g.roundRect) { g.beginPath(); g.roundRect(4, 4, W - 8, H - 8, r); g.stroke(); }
+    g.fillStyle = "#14345f";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    let tam = Math.round(H * 0.46);
+    do { g.font = "bold " + tam + "px system-ui, sans-serif"; tam -= 4; }
+    while (g.measureText(texto).width > W - 60 && tam > 16);
+    g.fillText(texto, W / 2, H / 2);
+    return c;
+  }
+
   /* Dibuja la máscara que suaviza los bordes: blanco en el medio, que se va
      desvaneciendo hacia afuera. Se usa igual en la escena y en la vista previa
      del creador, así lo que ves al armar es lo que se ve después. */
@@ -319,6 +341,100 @@
     });
   }
 
+  /* Ordenar: las palabras o frases aparecen desordenadas, una debajo de la otra.
+     Se tocan de a dos para intercambiarlas, igual que el rompecabezas. */
+  function registrarOrdenar() {
+    if (AFRAME.components["ra-ordenar"]) return;
+    AFRAME.registerComponent("ra-ordenar", {
+      schema: {
+        items: { type: "string" },                 // separadas por |
+        w: { type: "number", default: 1 }, h: { type: "number", default: 1 },
+        mensaje: { type: "string", default: "¡Muy bien!" },
+      },
+      init: function () {
+        const T = AFRAME.THREE;
+        const textos = this.data.items.split("|").map((t) => t.trim()).filter(Boolean);
+        if (!textos.length) return;
+        this.textos = textos;
+        const grupo = new T.Group();
+        this.el.setObject3D("mesh", grupo);
+        this.grupo = grupo;
+
+        const n = textos.length;
+        const ancho = this.data.w * 0.86;
+        this.alto = (this.data.h * 0.92) / n;
+        const altoPlaca = this.alto * 0.84;
+
+        this.piezas = textos.map((t) => {
+          const tex = new T.CanvasTexture(placaCanvas(t, altoPlaca / ancho));
+          tex.minFilter = T.LinearFilter;
+          const m = new T.Mesh(
+            new T.PlaneGeometry(ancho, altoPlaca),
+            new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide, depthWrite: false })
+          );
+          return m;
+        });
+        this.piezas.forEach((m, i) => { m.userData.pieza = i; grupo.add(m); });
+        this.orden = this.piezas.map((_, i) => i);
+        this.seleccion = null;
+        this.resuelto = false;
+        this.mezclar();
+      },
+      posicionDe: function (casillero) {
+        const n = this.piezas.length;
+        return { x: 0, y: (this.data.h * 0.92) / 2 - this.alto * (casillero + 0.5) };
+      },
+      colocar: function () {
+        this.orden.forEach((pieza, casillero) => {
+          const p = this.posicionDe(casillero);
+          this.piezas[pieza].position.set(p.x, p.y, 0);
+        });
+      },
+      estaResuelto: function () { return this.orden.every((pieza, casillero) => pieza === casillero); },
+      mezclar: function () {
+        let vueltas = 0;
+        do {
+          for (let i = this.orden.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const t = this.orden[i]; this.orden[i] = this.orden[j]; this.orden[j] = t;
+          }
+        } while (this.estaResuelto() && ++vueltas < 20);
+        this.colocar();
+      },
+      resaltar: function (casillero, si) {
+        const m = this.piezas[this.orden[casillero]];
+        if (!m) return;
+        m.material.color.setHex(si ? 0xffd27a : 0xffffff);
+        m.position.z = si ? 0.012 : 0;
+        m.scale.setScalar(si ? 1.05 : 1);
+      },
+      tocar: function (malla) {
+        if (this.resuelto || !malla || malla.userData.pieza === undefined) return;
+        const casillero = this.orden.indexOf(malla.userData.pieza);
+        if (casillero < 0) return;
+        if (this.seleccion === null) { this.seleccion = casillero; this.resaltar(casillero, true); return; }
+        if (this.seleccion === casillero) { this.resaltar(casillero, false); this.seleccion = null; return; }
+        this.resaltar(this.seleccion, false);
+        const a = this.seleccion, b = casillero;
+        const t = this.orden[a]; this.orden[a] = this.orden[b]; this.orden[b] = t;
+        this.seleccion = null;
+        this.colocar();
+        if (this.estaResuelto()) {
+          this.resuelto = true;
+          this.el.emit("rompecabezas-resuelto", { mensaje: this.data.mensaje || "¡Muy bien!" }, true);
+        }
+      },
+      remove: function () {
+        if (!this.grupo) return;
+        this.grupo.traverse((o) => {
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) { o.material.map && o.material.map.dispose(); o.material.dispose(); }
+        });
+        this.el.removeObject3D("mesh");
+      },
+    });
+  }
+
   function codigoError(el) {
     const e = el.error;
     if (!e) return null;
@@ -350,6 +466,7 @@
     const meta = paquete.meta;
     registrarComponente();
     registrarRompecabezas();
+    registrarOrdenar();
     const medios = prepararMedios(paquete, op.silenciado);
     const medioDe = (i) => medios.find((m) => m.indice === i);
 
@@ -484,8 +601,9 @@
       visibles.forEach((i) => { const m = medioDe(i); if (m && m.el.paused) reproducir(m); });
       const golpe = tocoElContenido(ev);
       if (!golpe) return;
-      const rompe = golpe.el.components && golpe.el.components["ra-rompecabezas"];
-      if (rompe) { rompe.tocar(golpe.objeto); return; }   // el toque es del juego, no abre nada
+      const comps = golpe.el.components || {};
+      const juego = comps["ra-rompecabezas"] || comps["ra-ordenar"];
+      if (juego && juego.tocar) { juego.tocar(golpe.objeto); return; }   // el toque es del juego, no abre nada
       const i = golpe.el.dataset.lamina;
       if (i !== undefined && enlaces[i]) window.open(enlaces[i], "_blank", "noopener");
     });
@@ -503,7 +621,14 @@
 
       const suave = Math.max(0, Math.min(0.45, num(c.suave, 0)));
 
-      if (c.tipo === "imagen" && c.juego === "rompecabezas" && url) {
+      if (c.tipo === "ordenar") {
+        const w = num(c.escala, 1), h = w * num(l.proporcion, 1);
+        const items = (c.items || []).join("|").replace(/[;:]/g, " ");
+        contenido = crear("a-entity", {
+          "ra-ordenar": `items: ${items}; w: ${w}; h: ${h}; mensaje: ${(c.mensaje || "¡Muy bien!").replace(/[;:]/g, " ")}`,
+          position: `${dx} ${dy} ${0.006 + dz}`,
+        }, ancla);
+      } else if (c.tipo === "imagen" && c.juego === "rompecabezas" && url) {
         const { w, h } = medidas(l, c);
         contenido = crear("a-entity", {
           "ra-rompecabezas": `src: ${url}; w: ${w}; h: ${h}; cols: ${Math.max(2, num(c.cols, 3))};` +

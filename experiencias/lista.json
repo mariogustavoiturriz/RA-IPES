@@ -1,6 +1,12 @@
 {
   "experiencias": [
     {
+      "titulo": "Dos actividades para tocar",
+      "descripcion": "Rompecabezas de Pitágoras y los pasos para resolver un problema",
+      "archivo": "experiencias/dos-actividades.zip",
+      "imagen": "experiencias/dos-actividades.jpg"
+    },
+    {
       "titulo": "Geometría en movimiento",
       "descripcion": "Ejemplo: una lámina con video y otra con un icosaedro en 3D",
       "archivo": "experiencias/geometria-en-movimiento.zip",
