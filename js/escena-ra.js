@@ -114,6 +114,22 @@
         if ("toneMapped" in mat) mat.toneMapped = false;
         this.malla = new T.Mesh(new T.PlaneGeometry(this.data.w, this.data.h), mat);
         this.el.setObject3D("mesh", this.malla);
+        this.video = video;
+        this.textura = tex;
+        this.cuadros = 0;
+      },
+
+      /* three.js se apoya en requestVideoFrameCallback para enterarse de que hay un
+         cuadro nuevo. En Android ese aviso no llega cuando el video no se está
+         mostrando en pantalla, así que la textura queda clavada en el primer cuadro
+         mientras el audio sigue corriendo. Acá le avisamos nosotros en cada cuadro. */
+      tick: function () {
+        const v = this.video;
+        if (!v || !this.textura) return;
+        if (!v.paused && v.readyState >= 2) {
+          this.textura.needsUpdate = true;
+          this.cuadros++;
+        }
       },
       remove: function () {
         if (!this.malla) return;
@@ -182,7 +198,7 @@
 
     medios.forEach((m) => {
       if (m.tipo !== "video") return;
-      m.el.style.cssText = "position:absolute;top:0;left:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-3";
+      m.el.style.cssText = "position:absolute;top:0;left:0;width:64px;height:64px;opacity:0.01;pointer-events:none;z-index:-3";
       contenedor.appendChild(m.el);
     });
 
@@ -273,11 +289,17 @@
         ? "No se pudo usar la cámara. Revisá que el navegador tenga permiso y que ninguna otra aplicación la esté usando."
         : "Hubo un problema al arrancar la realidad aumentada.");
     });
+    const cuadrosDe = (i) => {
+      const comps = escena.querySelectorAll("[ra-video]");
+      for (const c of comps) if (c.components["ra-video"].data.id === "ra-medio-" + i) return c.components["ra-video"].cuadros;
+      return null;
+    };
     window.__RA = {
       escena, visibles, medios,
       info: () => medios.map((m) => ({
         lamina: m.indice + 1, tipo: m.tipo, listo: m.el.readyState, pausado: m.el.paused,
         silencio: m.el.muted, ancho: m.el.videoWidth || null, falla: m.falla, desbloqueado: m.desbloqueado,
+        tiempo: Math.round((m.el.currentTime || 0) * 10) / 10, refrescos: cuadrosDe(m.indice),
       })),
     };
 
