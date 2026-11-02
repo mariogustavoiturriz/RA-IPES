@@ -133,11 +133,12 @@
   <div class="caja">
     <h2>Así no se puede abrir en el celular</h2>
     <p>Android no deja que una página guardada en el teléfono use los demás archivos de su carpeta. Por eso la ves sin formato y los botones no responden. En la notebook, en cambio, anda bien.</p>
-    <p><b>En el celular tenés dos caminos:</b></p>
+    <p><b>En el celular hay dos caminos, los dos sin instalar nada en el teléfono:</b></p>
     <ol>
-      <li><b>El recomendado:</b> entrá una vez al sitio publicado, con internet. Queda guardado en el teléfono y de ahí en adelante abre sin conexión, incluso en modo avión. Si lo agregás a la pantalla de inicio, queda como una aplicación más.</li>
-      <li>Abrir <code>visor-un-archivo.html</code> o <code>creador-un-archivo.html</code>, que están en esta misma carpeta y traen todo adentro. Vas a ver la pantalla bien, pero la cámara igual necesita que la página venga de internet: el teléfono no le da permiso a un archivo suelto.</li>
+      <li><b>Sin internet, sirviendo desde la notebook.</b> Abrí una terminal en esta carpeta y corré <code>python3 servidor.py</code>. Te muestra una dirección tipo <code>https://192.168.0.10:8443</code>: los celulares entran ahí estando en la misma red Wi-Fi. La primera vez el navegador avisa que el certificado no es conocido, se toca Configuración avanzada y Continuar. De ahí en más la cámara funciona.</li>
+      <li><b>Con internet una sola vez.</b> Entrás al sitio publicado y queda guardado en el teléfono: después abre sin conexión, hasta en modo avión. Sirve para que se lo lleven a la casa.</li>
     </ol>
+    <p class="chico">En esta carpeta también están <code>visor-un-archivo.html</code> y <code>creador-un-archivo.html</code>, que traen todo adentro: en el celular se ven bien y permiten armar experiencias, pero para la cámara hace falta alguno de los dos caminos de arriba.</p>
   </div>
 </div>
 <script>

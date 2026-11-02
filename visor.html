@@ -23,7 +23,9 @@
 <script src="lib/mindar-image-aframe.prod.js"></script>
 <script src="lib/jszip.min.js"></script>
 <script src="lib/qrcode.js"></script>
+<script src="lib/jsqr.js"></script>
 <script src="js/paquete.js"></script>
+<script src="js/lector-qr.js"></script>
 <script src="js/biblioteca.js"></script>
 <script src="js/escena-ra.js"></script>
 </head>
@@ -44,6 +46,10 @@
     <b style="font-size:18px;color:var(--texto)">Abrir experiencia (.zip)</b><br>
     <span class="chico">Tocá para elegir el archivo o arrastralo acá</span>
   </label>
+  <div class="fila" style="margin-top:12px">
+    <button class="btn primario" id="btn-escanear">📷 Escanear código QR</button>
+    <span class="suave chico">Si el docente proyectó o imprimió un QR, con esto alcanza.</span>
+  </div>
   <div id="msg-inicio" class="oculto" style="margin-top:12px"></div>
 
   <section id="sec-mias" class="oculto">
@@ -152,7 +158,7 @@
     const local = location.protocol === "content:" || location.protocol === "file:";
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       return local
-        ? "El celular no le da permiso de cámara a un archivo abierto desde una carpeta. Entrá una vez al sitio publicado, con internet: después queda guardado y funciona sin conexión."
+        ? "El celular no le da permiso de cámara a un archivo abierto desde una carpeta. Serví la carpeta desde la notebook con python3 servidor.py y entrá desde el celular a la dirección que te muestra, o entrá una vez al sitio publicado."
         : "Este navegador no permite usar la cámara.";
     }
     if (!window.isSecureContext) {
@@ -263,20 +269,48 @@
       if (!r.ok) throw new Error("No se encontró el paquete (" + r.status + ").");
       await abrirBlob(await r.blob(), { url: ruta });
     } catch (e) {
-      mensaje(msg, "error", esc(e.message || "No se pudo descargar la experiencia."));
+      const m = String(e.message || "");
+      mensaje(msg, "error", /fetch|Failed|NetworkError|CORS/i.test(m)
+        ? "No se pudo descargar la experiencia desde ese sitio. Puede que no haya conexión, o que ese servidor no permita descargas desde otra página. Si el paquete está en Google Drive, no va a funcionar: conviene publicarlo en GitHub."
+        : esc(m || "No se pudo descargar la experiencia."));
     }
   }
 
   function mostrarQR() {
     const caja = $("#p-qr");
     if (!caja.classList.contains("oculto")) { caja.classList.add("oculto"); return; }
-    const destino = location.origin + location.pathname + "?p=" + encodeURIComponent(origenUrl);
+    const destino = new URL(location.pathname + "?p=" + encodeURIComponent(origenUrl), location.href).href;
     const qr = qrcode(0, "M");
     qr.addData(destino); qr.make();
     caja.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true }) +
       `<p class="chico suave" style="word-break:break-all">${esc(destino)}</p>`;
     caja.querySelector("svg").style.cssText = "width:100%;max-width:280px;height:auto;background:#fff";
     caja.classList.remove("oculto");
+  }
+
+  /* ---------- QR ---------- */
+  async function escanear() {
+    const msg = $("#msg-inicio");
+    let texto;
+    try {
+      texto = await LectorQR.leer();
+    } catch (e) {
+      mensaje(msg, "error", esc(e.message));
+      return;
+    }
+    if (texto === null) return;                 // canceló
+    let destino = null;
+    try {
+      const u = new URL(texto, location.href);
+      const p = u.searchParams.get("p");
+      if (p) destino = new URL(p, u).href;       // QR del visor: visor.html?p=...
+      else if (/\.zip($|\?)/i.test(u.pathname)) destino = u.href;  // QR directo al paquete
+    } catch (e) { /* no era una dirección */ }
+    if (!destino) {
+      mensaje(msg, "aviso", "Ese código no lleva a una experiencia de realidad aumentada. Contenía: <b>" + esc(texto.slice(0, 120)) + "</b>");
+      return;
+    }
+    abrirUrl(destino);
   }
 
   /* ---------- eventos ---------- */
@@ -290,6 +324,7 @@
   $("#btn-salir").addEventListener("click", salirRA);
   $("#btn-sonido").addEventListener("click", () => { silenciado = !silenciado; actualizarBotonSonido(); if (sesion) sesion.silenciar(silenciado); });
   $("#btn-qr").addEventListener("click", mostrarQR);
+  $("#btn-escanear").addEventListener("click", escanear);
 
   cargarMias();
   cargarGaleria();
@@ -302,11 +337,12 @@
   <div class="caja">
     <h2>Así no se puede abrir en el celular</h2>
     <p>Android no deja que una página guardada en el teléfono use los demás archivos de su carpeta. Por eso la ves sin formato y los botones no responden. En la notebook, en cambio, anda bien.</p>
-    <p><b>En el celular tenés dos caminos:</b></p>
+    <p><b>En el celular hay dos caminos, los dos sin instalar nada en el teléfono:</b></p>
     <ol>
-      <li><b>El recomendado:</b> entrá una vez al sitio publicado, con internet. Queda guardado en el teléfono y de ahí en adelante abre sin conexión, incluso en modo avión. Si lo agregás a la pantalla de inicio, queda como una aplicación más.</li>
-      <li>Abrir <code>visor-un-archivo.html</code> o <code>creador-un-archivo.html</code>, que están en esta misma carpeta y traen todo adentro. Vas a ver la pantalla bien, pero la cámara igual necesita que la página venga de internet: el teléfono no le da permiso a un archivo suelto.</li>
+      <li><b>Sin internet, sirviendo desde la notebook.</b> Abrí una terminal en esta carpeta y corré <code>python3 servidor.py</code>. Te muestra una dirección tipo <code>https://192.168.0.10:8443</code>: los celulares entran ahí estando en la misma red Wi-Fi. La primera vez el navegador avisa que el certificado no es conocido, se toca Configuración avanzada y Continuar. De ahí en más la cámara funciona.</li>
+      <li><b>Con internet una sola vez.</b> Entrás al sitio publicado y queda guardado en el teléfono: después abre sin conexión, hasta en modo avión. Sirve para que se lo lleven a la casa.</li>
     </ol>
+    <p class="chico">En esta carpeta también están <code>visor-un-archivo.html</code> y <code>creador-un-archivo.html</code>, que traen todo adentro: en el celular se ven bien y permiten armar experiencias, pero para la cámara hace falta alguno de los dos caminos de arriba.</p>
   </div>
 </div>
 <script>

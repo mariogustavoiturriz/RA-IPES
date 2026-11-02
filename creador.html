@@ -45,6 +45,7 @@
 <script src="lib/aframe.min.js"></script>
 <script src="lib/mindar-image-aframe.prod.js"></script>
 <script src="lib/jszip.min.js"></script>
+<script src="lib/qrcode.js"></script>
 <script src="js/paquete.js"></script>
 <script src="js/escena-ra.js"></script>
 </head>
@@ -94,6 +95,27 @@
     <div id="acciones" class="fila oculto">
       <button class="btn primario" id="probar">📷 Probar con la cámara</button>
       <button class="btn primario" id="descargar">⬇️ Descargar paquete (.zip)</button>
+    </div>
+  </div>
+
+  <div id="compartir" class="oculto">
+    <h2>Compartir</h2>
+    <div class="tarjeta" style="display:grid;gap:12px">
+      <p class="suave" style="margin:0">Para que los demás la abran escaneando un QR, el paquete tiene que estar publicado en algún lado. Subí el <b id="nombre-zip">archivo .zip</b> a la carpeta <code>experiencias/</code> del sitio y poné acá la dirección del sitio.</p>
+      <label class="campo">Dirección del sitio
+        <input type="text" id="sitio" placeholder="https://usuario.github.io/ra-ipesfa/" inputmode="url">
+      </label>
+      <div id="caja-qr" class="oculto">
+        <div class="fila" style="align-items:flex-start;gap:18px">
+          <div id="qr-exp"></div>
+          <div style="flex:1;min-width:220px">
+            <p class="chico suave" style="margin:0 0 6px">Esta es la dirección que lleva el QR:</p>
+            <p class="chico" style="word-break:break-all;margin:0 0 10px"><a id="url-exp" href="#" target="_blank"></a></p>
+            <button class="btn" id="imprimir">🖨️ Hoja para imprimir (lámina + QR)</button>
+          </div>
+        </div>
+      </div>
+      <p class="chico suave" style="margin:0">Si el paquete queda en Google Drive no va a funcionar: Drive no deja que otra página lo descargue. GitHub sí.</p>
     </div>
   </div>
 </main>
@@ -267,6 +289,9 @@
     if (L.contenido && L.contenido.url) URL.revokeObjectURL(L.contenido.url);
     const url = URL.createObjectURL(blob);
     L.contenido = { tipo, blob, url, nombreArchivo: nombre, proporcion: await proporcionContenido(tipo, url) };
+    if (tipo === "video" && L.contenido.proporcion === null) {
+      av.innerHTML = "<span style='color:var(--mal)'>Este navegador no puede leer el video, así que tampoco lo va a poder mostrar. Suele pasar con los .mov y con los videos del celular en HEVC: convertilo a MP4 con códec H.264.</span>";
+    }
     // valores iniciales razonables según el tipo
     if (tipo === "modelo") Object.assign(L.ajustes, { escala: 0.6, rotacion: 0 });
     if (tipo === "audio") Object.assign(L.ajustes, { escala: 0.3 });
@@ -342,6 +367,7 @@
 
   function invalidar() {
     $("#acciones").classList.add("oculto");
+    $("#compartir").classList.add("oculto");
     $("#msg").className = "oculto";
   }
 
@@ -390,6 +416,8 @@
         ? `La experiencia está lista, pero ${bajas.length > 1 ? "las láminas " + bajas.join(", ") + " tienen" : "la lámina " + bajas[0] + " tiene"} poco detalle y a la cámara le va a costar reconocerla. Si podés, usá una imagen con más textura y contraste.`
         : "¡Lista! Probala con la cámara o descargá el paquete para compartirlo.");
       $("#acciones").classList.remove("oculto");
+      $("#compartir").classList.remove("oculto");
+      dibujarQR();
       window.__CREADOR_LISTO = true;
     } catch (e) {
       console.error(e);
@@ -438,7 +466,7 @@
     const local = location.protocol === "content:" || location.protocol === "file:";
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.isSecureContext) {
       alert(local
-        ? "El celular no le da permiso de cámara a un archivo abierto desde una carpeta. Podés generar y descargar la experiencia igual; para probarla con la cámara, entrá al sitio publicado."
+        ? "El celular no le da permiso de cámara a un archivo abierto desde una carpeta. Podés generar y descargar la experiencia igual; para probarla con la cámara, serví la carpeta desde la notebook con python3 servidor.py o entrá al sitio publicado."
         : "Para usar la cámara la página tiene que abrirse con https://");
       return;
     }
@@ -492,6 +520,79 @@
     } catch (e) { alert(e.message || String(e)); }
   }
 
+  /* ---------- compartir ---------- */
+  function nombreArchivoZip() {
+    return Paquete.slug($("#titulo").value.trim() || "experiencia") + ".zip";
+  }
+  function urlExperiencia() {
+    let base = $("#sitio").value.trim();
+    if (!base) return null;
+    if (!/^https?:\/\//i.test(base)) base = "https://" + base;
+    if (!base.endsWith("/")) base += "/";
+    try {
+      return new URL("visor.html?p=" + encodeURIComponent("experiencias/" + nombreArchivoZip()), base).href;
+    } catch (e) { return null; }
+  }
+  function dibujarQR() {
+    const url = urlExperiencia();
+    $("#nombre-zip").textContent = nombreArchivoZip();
+    $("#caja-qr").classList.toggle("oculto", !url);
+    if (!url) return;
+    const qr = qrcode(0, "M"); qr.addData(url); qr.make();
+    $("#qr-exp").innerHTML = qr.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+    const svg = $("#qr-exp").querySelector("svg");
+    svg.style.cssText = "width:160px;height:160px;background:#fff;border-radius:6px";
+    const a = $("#url-exp"); a.href = url; a.textContent = url;
+    try { localStorage.setItem("ra-sitio", $("#sitio").value.trim()); } catch (e) {}
+  }
+  function aDataURL(blob) {
+    return new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
+  }
+  async function hojaParaImprimir() {
+    const url = urlExperiencia();
+    if (!url) return;
+    const qr = qrcode(0, "M"); qr.addData(url); qr.make();
+    const svg = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    const titulo = esc($("#titulo").value.trim() || "Experiencia");
+    const autoria = esc($("#autoria").value.trim());
+    const hojas = [];
+    for (let i = 0; i < laminas.length; i++) {
+      const L = laminas[i];
+      const img = await aDataURL(L.imagen.blob);
+      const nombre = esc($(".nombre-lamina", L.nodo).value.trim() || "Lámina " + (i + 1));
+      hojas.push(`<section class="hoja ${i < laminas.length - 1 ? "salto" : ""}">
+        <h1>${titulo}</h1>
+        <p class="sub">${nombre}${autoria ? " · " + autoria : ""}</p>
+        <img class="lamina-img" src="${img}" alt="">
+        <div class="pie-qr">${svg}
+          <div><b>Para verla en movimiento</b><ol>
+            <li>Escaneá este código con la cámara del celular.</li>
+            <li>Tocá <b>Iniciar cámara</b>.</li>
+            <li>Apuntá a esta misma imagen.</li>
+          </ol></div>
+        </div>
+      </section>`);
+    }
+    const v = window.open("", "_blank");
+    if (!v) { mensaje("aviso", "El navegador bloqueó la ventana para imprimir. Permitila y probá de nuevo."); return; }
+    v.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${titulo}</title><style>
+      body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1d2430;margin:0;padding:18px;background:#fff}
+      .hoja{max-width:760px;margin:0 auto 30px}
+      h1{font-size:28px;margin:0 0 2px} .sub{color:#5b6576;margin:0 0 12px}
+      .lamina-img{width:100%;border:1px solid #ccc;border-radius:6px}
+      .pie-qr{display:flex;gap:18px;align-items:center;margin-top:14px}
+      .pie-qr svg{width:150px;height:150px;flex:none;background:#fff}
+      ol{margin:6px 0 0 18px;padding:0} li{margin-bottom:2px}
+      @media print{.salto{page-break-after:always} body{padding:0}}
+    </style></head><body>${hojas.join("")}</body></html>`);
+    v.document.close();
+    setTimeout(() => { try { v.print(); } catch (e) {} }, 600);
+  }
+  $("#sitio").addEventListener("input", dibujarQR);
+  $("#imprimir").onclick = hojaParaImprimir;
+  $("#titulo").addEventListener("input", () => { if (!$("#compartir").classList.contains("oculto")) dibujarQR(); });
+  try { const g = localStorage.getItem("ra-sitio"); if (g) $("#sitio").value = g; } catch (e) {}
+
   $("#agregar").onclick = () => { nuevaLamina(); invalidar(); };
   $("#generar").onclick = generar;
   $("#descargar").onclick = descargar;
@@ -508,11 +609,12 @@
   <div class="caja">
     <h2>Así no se puede abrir en el celular</h2>
     <p>Android no deja que una página guardada en el teléfono use los demás archivos de su carpeta. Por eso la ves sin formato y los botones no responden. En la notebook, en cambio, anda bien.</p>
-    <p><b>En el celular tenés dos caminos:</b></p>
+    <p><b>En el celular hay dos caminos, los dos sin instalar nada en el teléfono:</b></p>
     <ol>
-      <li><b>El recomendado:</b> entrá una vez al sitio publicado, con internet. Queda guardado en el teléfono y de ahí en adelante abre sin conexión, incluso en modo avión. Si lo agregás a la pantalla de inicio, queda como una aplicación más.</li>
-      <li>Abrir <code>visor-un-archivo.html</code> o <code>creador-un-archivo.html</code>, que están en esta misma carpeta y traen todo adentro. Vas a ver la pantalla bien, pero la cámara igual necesita que la página venga de internet: el teléfono no le da permiso a un archivo suelto.</li>
+      <li><b>Sin internet, sirviendo desde la notebook.</b> Abrí una terminal en esta carpeta y corré <code>python3 servidor.py</code>. Te muestra una dirección tipo <code>https://192.168.0.10:8443</code>: los celulares entran ahí estando en la misma red Wi-Fi. La primera vez el navegador avisa que el certificado no es conocido, se toca Configuración avanzada y Continuar. De ahí en más la cámara funciona.</li>
+      <li><b>Con internet una sola vez.</b> Entrás al sitio publicado y queda guardado en el teléfono: después abre sin conexión, hasta en modo avión. Sirve para que se lo lleven a la casa.</li>
     </ol>
+    <p class="chico">En esta carpeta también están <code>visor-un-archivo.html</code> y <code>creador-un-archivo.html</code>, que traen todo adentro: en el celular se ven bien y permiten armar experiencias, pero para la cámara hace falta alguno de los dos caminos de arriba.</p>
   </div>
 </div>
 <script>
