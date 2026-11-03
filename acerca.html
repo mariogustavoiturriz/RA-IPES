@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Acerca de · RA IPESfa</title>
+<meta name="theme-color" content="#14345f">
+<link rel="icon" href="img/icono.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  /* Estilos mínimos escritos acá adentro: si el navegador no puede cargar los archivos
+     de la carpeta (pasa en los celulares), al menos se lee el aviso de abajo. */
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: #faf7f0; color: #1d2430; line-height: 1.5; }
+  .oculto { display: none !important; }
+  #sin-archivos { display: none; max-width: 660px; margin: 0 auto; padding: 22px 16px; }
+  #sin-archivos .caja { background: #fff; border: 1px solid #e3ded2; border-radius: 14px; padding: 18px; }
+  #sin-archivos h2 { font-size: 21px; margin: 0 0 10px; }
+  #sin-archivos li { margin-bottom: 10px; }
+  #sin-archivos code { background: #f0ece2; padding: 1px 5px; border-radius: 4px; }
+</style>
+<link rel="stylesheet" href="css/estilo.css">
+<style>
+  .copyleft { font-size: 46px; line-height: 1; display: inline-block; transform: scaleX(-1); }
+  .ficha { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; }
+  .ficha dt { font-weight: 700; color: var(--suave); font-size: 14px; }
+  .ficha dd { margin: 0; }
+  .creditos li { margin-bottom: 6px; }
+</style>
+<script src="js/archivos.js"></script>
+</head>
+<body>
+<header class="barra">
+  <a class="marca" href="index.html"><img src="img/icono.svg" alt="">RA · IPESfa</a>
+  <nav><a href="index.html">Inicio</a><a href="visor.html">Ver</a><a href="creador.html">Crear</a><a href="acerca.html" aria-current="page">Acerca de</a></nav>
+</header>
+
+<main>
+  <h1>Acerca de</h1>
+  <p class="bajada">Un sistema libre para crear y ver experiencias de realidad aumentada desde el navegador, sin instalar nada, sin cuentas y sin depender de ningún servicio pago.</p>
+
+  <section class="tarjeta">
+    <dl class="ficha">
+      <dt>Autoría</dt><dd><b>Gustavo Iturriz</b></dd>
+      <dt>Institución</dt><dd>IPES "Florentino Ameghino" · Ushuaia, Tierra del Fuego</dd>
+      <dt>Versión</dt><dd id="version">—</dd>
+      <dt>Año</dt><dd>2026</dd>
+    </dl>
+  </section>
+
+  <h2>Copyleft</h2>
+  <div class="tarjeta">
+    <p style="margin-top:0"><span class="copyleft">&copy;</span></p>
+    <p>Este sistema es <b>software libre</b>. Se puede usar, copiar, estudiar, modificar y repartir, con fines educativos o de cualquier otro tipo, sin pedir permiso y sin pagar nada.</p>
+    <p>Lo único que se pide a cambio es que lo que se derive de acá siga siendo libre: que se comparta con la misma libertad y que se mantenga la mención de autoría. Eso es el copyleft, y es lo contrario de reservarse los derechos.</p>
+    <p class="chico suave" style="margin-bottom:0">Licencia <b>GNU GPL versión 3</b>. El texto completo está en <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">gnu.org/licenses/gpl-3.0</a>.</p>
+  </div>
+
+  <h2>Hecho con software libre</h2>
+  <div class="tarjeta">
+    <p style="margin-top:0">El reconocimiento de imágenes y el dibujo en 3D no los escribí yo: son bibliotecas libres de otra gente, que viajan adentro de este sistema y no se descargan de ningún lado.</p>
+    <ul class="creditos">
+      <li><b>MindAR</b> 1.2.5 — reconocimiento y seguimiento de imágenes. Hiu Kim Yuen, licencia MIT.</li>
+      <li><b>A-Frame</b> 1.5.0 — escena 3D sobre la cámara. Licencia MIT.</li>
+      <li><b>JSZip</b> 3.10 — armado y lectura de los paquetes. Stuart Knightley, licencia MIT.</li>
+      <li><b>jsQR</b> 1.4 — lectura de códigos QR. Licencia Apache 2.0.</li>
+      <li><b>qrcode-generator</b> 2.0 — generación de códigos QR. Kazuhiko Arase, licencia MIT.</li>
+    </ul>
+    <p class="chico suave" style="margin-bottom:0">Las licencias de esas bibliotecas se respetan tal como están: son libres y permiten este uso.</p>
+  </div>
+
+  <h2>Por qué existe</h2>
+  <div class="tarjeta">
+    <p style="margin-top:0">Las herramientas conocidas para hacer realidad aumentada en el aula son pagas, obligan a abrir cuenta y guardan el material en servidores de otros. Si mañana cierran, se lleva puesto todo lo que armó la escuela.</p>
+    <p style="margin-bottom:0">Acá no hay nada de eso. Cada experiencia es un archivo que te podés guardar, el programa se copia y se publica donde quieras, y todo funciona sin conexión. Nadie depende de nadie, que era la idea desde el principio.</p>
+  </div>
+</main>
+
+<footer class="pie">Sistema de realidad aumentada del IPES "Florentino Ameghino" · Ushuaia · <span class="copyleft" style="font-size:16px">&copy;</span> Gustavo Iturriz · Software libre</footer>
+
+<div id="sin-archivos">
+  <div class="caja">
+    <h2>Así no se puede abrir en el celular</h2>
+    <p>Android no deja que una página guardada en el teléfono use los demás archivos de su carpeta. Por eso la ves sin formato y los botones no responden. En la notebook, en cambio, anda bien.</p>
+    <p><b>En el celular hay dos caminos, los dos sin instalar nada en el teléfono:</b></p>
+    <ol>
+      <li><b>Sin internet, sirviendo desde la notebook.</b> Abrí una terminal en esta carpeta y corré <code>python3 servidor.py</code>. Te muestra una dirección tipo <code>https://192.168.0.10:8443</code>: los celulares entran ahí estando en la misma red Wi-Fi. La primera vez el navegador avisa que el certificado no es conocido, se toca Configuración avanzada y Continuar. De ahí en más la cámara funciona.</li>
+      <li><b>Con internet una sola vez.</b> Entrás al sitio publicado y queda guardado en el teléfono: después abre sin conexión, hasta en modo avión. Sirve para que se lo lleven a la casa.</li>
+    </ol>
+    <p class="chico">En esta carpeta también están <code>visor-un-archivo.html</code> y <code>creador-un-archivo.html</code>, que traen todo adentro: en el celular se ven bien y permiten armar experiencias, pero para la cámara hace falta alguno de los dos caminos de arriba.</p>
+  </div>
+</div>
+<script>
+document.getElementById("version").textContent = (typeof VERSION_APP !== "undefined" ? VERSION_APP : "—");
+/* Si los archivos de la carpeta no se cargaron, mostramos el aviso en vez de una página muerta. */
+window.addEventListener("load", function () {
+  var jsOk = (typeof VERSION_APP !== "undefined");
+  var barra = document.querySelector("header.barra");
+  var cssOk = barra && getComputedStyle(barra).backgroundColor === "rgb(20, 52, 95)";
+  if (jsOk && cssOk) return;
+  var sin = document.getElementById("sin-archivos");
+  document.querySelectorAll("main, header, footer").forEach(function (e) { e.style.display = "none"; });
+  sin.style.display = "block";
+});
+</script>
+</body>
+</html>
