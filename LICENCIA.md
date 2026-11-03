@@ -1,6 +1,6 @@
 # Licencia
 
-Sistema de realidad aumentada del IPES "Florentino Ameghino"
+Realidad aumentada para el aula
 Copyleft 🄯 2026 Gustavo Iturriz — Ushuaia, Tierra del Fuego, Argentina
 
 Este programa es software libre: se puede redistribuir y modificar bajo los

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Realidad aumentada · IPESfa</title>
+<title>Realidad aumentada para el aula</title>
 <meta name="description" content="Sistema libre para crear y ver experiencias de realidad aumentada desde el navegador.">
 <meta name="theme-color" content="#14345f">
 <link rel="icon" href="img/icono.svg">
@@ -36,14 +36,14 @@
 </head>
 <body>
 <header class="barra">
-  <a class="marca" href="index.html"><img src="img/icono.svg" alt="">RA · IPESfa</a>
-  <nav><a href="index.html" aria-current="page">Inicio</a><a href="visor.html">Ver</a><a href="creador.html">Crear</a><a href="acerca.html">Acerca de:</a></nav>
+  <a class="marca" href="index.html"><img src="img/icono.svg" alt="">RA · Aula</a>
+  <nav><a href="index.html" aria-current="page">Inicio</a><a href="visor.html">Ver</a><a href="creador.html">Crear</a><a href="acerca.html">Acerca de</a></nav>
 </header>
 <main>
   <section class="heroe">
     <div>
       <h1>Realidad aumentada para el aula</h1>
-      <p class="bajada">Apuntás la cámara a una lámina y aparece un video, una imagen, un modelo 3D o un audio encima. Lo puede usar cualquier docente o estudiante del IPESfa, desde el navegador, sin instalar nada y sin cuentas.</p>
+      <p class="bajada">Apuntás la cámara a una lámina y aparece un video, una imagen, un modelo 3D o un audio encima. Lo puede usar cualquier docente o estudiante, desde el navegador, sin instalar nada y sin cuentas.</p>
       <div class="fila">
         <a class="btn primario grande" href="visor.html">📷 Ver experiencias</a>
         <a class="btn grande" href="creador.html">✏️ Crear una</a>
@@ -80,7 +80,7 @@
     </section>
   </div>
 </main>
-<footer class="pie">Sistema de realidad aumentada del IPES "Florentino Ameghino" · Ushuaia · <a href="acerca.html">Gustavo Iturriz · software libre</a></footer>
+<footer class="pie">Realidad aumentada para el aula · <a href="acerca.html">Gustavo Iturriz · software libre</a></footer>
 <script>
 (function () {
   "use strict";
@@ -99,7 +99,7 @@
   if (btn) btn.onclick = async () => {
     btn.disabled = true;
     try {
-      const zip = new JSZip(), raiz = zip.folder("RA-IPESfa");
+      const zip = new JSZip(), raiz = zip.folder("realidad-aumentada");
       let n = 0;
       const todos = ARCHIVOS_APP.concat(ARCHIVOS_KIT_EXTRA);
       for (const ruta of todos) {
@@ -109,7 +109,7 @@
         raiz.file(ruta, await r.arrayBuffer());
       }
       raiz.file("ABRIR-ESTO.txt",
-        "SISTEMA DE REALIDAD AUMENTADA - IPESfa \r\n\r\n" +
+        "REALIDAD AUMENTADA PARA EL AULA\r\n\r\n" +
         "EN LA NOTEBOOK (es para lo que sirve esta carpeta)\r\n" +
         "  Abri index.html con doble clic (Chrome, Edge o Firefox).\r\n" +
         "  No hace falta internet ni instalar nada.\r\n" +
@@ -122,7 +122,7 @@
         "  telefono y despues abre sin conexion, hasta en modo avion.\r\n" +
         "  Conviene agregarlo a la pantalla de inicio: queda como una app mas.\r\n");
       const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "RA-IPESfa-sin-internet.zip"; a.click();
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "realidad-aumentada-sin-internet.zip"; a.click();
       est.textContent = "Listo (" + (blob.size / 1048576).toFixed(1) + " MB).";
     } catch (e) { est.textContent = "Error: " + e.message; }
     btn.disabled = false;

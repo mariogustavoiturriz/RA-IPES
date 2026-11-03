@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Visor RA · IPESfa</title>
+<title>Visor RA · Aula</title>
 <meta name="theme-color" content="#14345f">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxNDM0NWYiLz48cGF0aCBkPSJNMTIgMjJWMTJoMTBNNDIgMTJoMTB2MTBNNTIgNDJ2MTBINDJNMjIgNTJIMTJWNDIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2YxYjgwZiIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNXYxNUwzMiA0OCAxOSA0MC41di0xNXoiIGZpbGw9IiMzYThlZTYiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNSAzMiAzMyAxOSAyNS41eiIgZmlsbD0iIzhjYzRmZiIvPjxwYXRoIGQ9Ik0zMiAzM3YxNWwxMy03LjV2LTE1eiIgZmlsbD0iIzFmNWZhOCIvPjwvc3ZnPgo=">
 <style>
@@ -33860,7 +33860,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
      hacia afuera. La calculamos píxel por píxel en vez de usar el desenfoque del
      navegador, porque varios Android no lo tienen y el borde salía duro.
      Se usa igual en la escena y en la vista previa del creador. */
-  function mascaraCanvas(aspecto, suavidad, conAlfa) {
+  function mascaraCanvas(aspecto, suavidad, conAlfa, redondeo) {
     const W = 192;
     const H = Math.max(16, Math.round(W * (aspecto || 1)));
     const c = document.createElement("canvas");
@@ -33868,9 +33868,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     const g = c.getContext("2d");
     const img = g.createImageData(W, H);
     const px = img.data;
-    const s = Math.max(0, Math.min(0.45, suavidad || 0));
-    const banda = Math.max(1, Math.min(W, H) * s * 0.5);   // ancho del desvanecido
-    const radio = banda * 0.9;                             // esquinas redondeadas
+    const s = Math.max(0, Math.min(0.5, suavidad || 0));
+    const r = redondeo === undefined || redondeo === null ? s * 0.9 : Math.max(0, Math.min(0.5, redondeo));
+    const banda = Math.max(0.75, Math.min(W, H) * s);      // ancho del desvanecido
+    const radio = Math.min(Math.min(W, H) * r, Math.min(W, H) / 2 - 1);  // esquinas redondeadas
     const mx = W / 2, my = H / 2;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -33901,6 +33902,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         id: { type: "string" }, src: { type: "string" },
         w: { type: "number", default: 1 }, h: { type: "number", default: 1 },
         suave: { type: "number", default: 0 },
+        redondeo: { type: "number", default: -1 },
       },
       init: function () {
         const T = AFRAME.THREE;
@@ -33918,8 +33920,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         if ("colorSpace" in tex && T.SRGBColorSpace) tex.colorSpace = T.SRGBColorSpace;
         else if ("encoding" in tex && T.sRGBEncoding) tex.encoding = T.sRGBEncoding;
         const opciones = { map: tex, side: T.DoubleSide };
-        if (this.data.suave > 0) {
-          const mascara = new T.CanvasTexture(mascaraCanvas(this.data.h / this.data.w, this.data.suave));
+        if (this.data.suave > 0 || this.data.redondeo > 0) {
+          const mascara = new T.CanvasTexture(mascaraCanvas(this.data.h / this.data.w, this.data.suave, false,
+                                                          this.data.redondeo < 0 ? undefined : this.data.redondeo));
           mascara.minFilter = T.LinearFilter;
           opciones.alphaMap = mascara;
           opciones.transparent = true;
@@ -34394,7 +34397,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       const rot = num(c.rotacion, 0);
       const url = c.archivo ? paquete.url(c.archivo) : null;
 
-      const suave = Math.max(0, Math.min(0.45, num(c.suave, 0.12)));
+      const suave = Math.max(0, Math.min(0.5, num(c.suave, 0.2)));
 
       if (c.tipo === "ordenar") {
         const w = num(c.escala, 1), h = w * num(l.proporcion, 1);
@@ -34418,7 +34421,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         const { w, h } = medidas(l, c);
         contenido = crear("a-entity", {
           "ra-video": (c.tipo === "video" ? `id: ra-medio-${i}` : `src: ${url}`) +
-                      `; w: ${w}; h: ${h}; suave: ${suave}`,
+                      `; w: ${w}; h: ${h}; suave: ${suave}; redondeo: ${num(c.redondeo, 0.1)}`,
           position: `${dx} ${dy} ${0.002 + dz}`, rotation: `0 0 ${rot}`,
         }, ancla);
       } else if (c.tipo === "modelo" && url) {
@@ -34532,7 +34535,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 </head>
 <body>
 <header class="barra">
-  <a class="marca" href="index.html"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxNDM0NWYiLz48cGF0aCBkPSJNMTIgMjJWMTJoMTBNNDIgMTJoMTB2MTBNNTIgNDJ2MTBINDJNMjIgNTJIMTJWNDIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2YxYjgwZiIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNXYxNUwzMiA0OCAxOSA0MC41di0xNXoiIGZpbGw9IiMzYThlZTYiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNSAzMiAzMyAxOSAyNS41eiIgZmlsbD0iIzhjYzRmZiIvPjxwYXRoIGQ9Ik0zMiAzM3YxNWwxMy03LjV2LTE1eiIgZmlsbD0iIzFmNWZhOCIvPjwvc3ZnPgo=" alt="">RA · IPESfa</a>
+  <a class="marca" href="index.html"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxNDM0NWYiLz48cGF0aCBkPSJNMTIgMjJWMTJoMTBNNDIgMTJoMTB2MTBNNTIgNDJ2MTBINDJNMjIgNTJIMTJWNDIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2YxYjgwZiIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNXYxNUwzMiA0OCAxOSA0MC41di0xNXoiIGZpbGw9IiMzYThlZTYiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNSAzMiAzMyAxOSAyNS41eiIgZmlsbD0iIzhjYzRmZiIvPjxwYXRoIGQ9Ik0zMiAzM3YxNWwxMy03LjV2LTE1eiIgZmlsbD0iIzFmNWZhOCIvPjwvc3ZnPgo=" alt="">RA · Aula</a>
   <nav><a href="index.html">Inicio</a><a href="visor-un-archivo.html" aria-current="page">Ver</a><a href="creador-un-archivo.html">Crear</a><a href="acerca.html">Acerca de</a></nav>
 </header>
 
@@ -34568,7 +34571,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   </section>
 
   <section id="sec-galeria" class="oculto">
-    <h2>Galería del IPESfa</h2>
+    <h2>Galería de ejemplos</h2>
     <div class="lista" id="lista-galeria"></div>
   </section>
 </main>
@@ -34602,7 +34605,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 <div id="ra-cargando" class="ra-cargando oculto"><div><div class="rueda"></div>Preparando la cámara…<br><span class="chico">La primera vez el navegador te va a pedir permiso.</span></div></div>
 <div id="ra-error" class="ra-error oculto"></div>
 
-<footer class="pie" id="pie">Sistema de realidad aumentada del IPES "Florentino Ameghino" · Ushuaia · <a href="acerca.html">Gustavo Iturriz · software libre</a></footer>
+<footer class="pie" id="pie">Realidad aumentada para el aula · <a href="acerca.html">Gustavo Iturriz · software libre</a></footer>
 
 <script>
 (function () {

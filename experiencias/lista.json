@@ -1,6 +1,12 @@
 {
   "experiencias": [
     {
+      "titulo": "Pictogramas para Inicial",
+      "descripcion": "Ordenar la rutina del día, descubrir la palabra y armar una figura",
+      "archivo": "experiencias/pictogramas-inicial.zip",
+      "imagen": "experiencias/pictogramas-inicial.jpg"
+    },
+    {
       "titulo": "Cuadrados perfectos",
       "descripcion": "Ordenar imágenes: la sucesión 1, 4, 9 y 16",
       "archivo": "experiencias/cuadrados-perfectos.zip",
@@ -14,7 +20,7 @@
     },
     {
       "titulo": "Geometría en movimiento",
-      "descripcion": "Ejemplo: una lámina con video y otra con un icosaedro en 3D",
+      "descripcion": "Una lámina con video y otra con un icosaedro en 3D",
       "archivo": "experiencias/geometria-en-movimiento.zip",
       "imagen": "experiencias/geometria-en-movimiento.jpg"
     }

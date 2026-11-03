@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Crear experiencia RA · IPESfa</title>
+<title>Crear experiencia RA · Aula</title>
 <meta name="theme-color" content="#14345f">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxNDM0NWYiLz48cGF0aCBkPSJNMTIgMjJWMTJoMTBNNDIgMTJoMTB2MTBNNTIgNDJ2MTBINDJNMjIgNTJIMTJWNDIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2YxYjgwZiIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNXYxNUwzMiA0OCAxOSA0MC41di0xNXoiIGZpbGw9IiMzYThlZTYiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNSAzMiAzMyAxOSAyNS41eiIgZmlsbD0iIzhjYzRmZiIvPjxwYXRoIGQ9Ik0zMiAzM3YxNWwxMy03LjV2LTE1eiIgZmlsbD0iIzFmNWZhOCIvPjwvc3ZnPgo=">
 <style>
@@ -23609,7 +23609,7 @@ var qrcode = function() {
      hacia afuera. La calculamos píxel por píxel en vez de usar el desenfoque del
      navegador, porque varios Android no lo tienen y el borde salía duro.
      Se usa igual en la escena y en la vista previa del creador. */
-  function mascaraCanvas(aspecto, suavidad, conAlfa) {
+  function mascaraCanvas(aspecto, suavidad, conAlfa, redondeo) {
     const W = 192;
     const H = Math.max(16, Math.round(W * (aspecto || 1)));
     const c = document.createElement("canvas");
@@ -23617,9 +23617,10 @@ var qrcode = function() {
     const g = c.getContext("2d");
     const img = g.createImageData(W, H);
     const px = img.data;
-    const s = Math.max(0, Math.min(0.45, suavidad || 0));
-    const banda = Math.max(1, Math.min(W, H) * s * 0.5);   // ancho del desvanecido
-    const radio = banda * 0.9;                             // esquinas redondeadas
+    const s = Math.max(0, Math.min(0.5, suavidad || 0));
+    const r = redondeo === undefined || redondeo === null ? s * 0.9 : Math.max(0, Math.min(0.5, redondeo));
+    const banda = Math.max(0.75, Math.min(W, H) * s);      // ancho del desvanecido
+    const radio = Math.min(Math.min(W, H) * r, Math.min(W, H) / 2 - 1);  // esquinas redondeadas
     const mx = W / 2, my = H / 2;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -23650,6 +23651,7 @@ var qrcode = function() {
         id: { type: "string" }, src: { type: "string" },
         w: { type: "number", default: 1 }, h: { type: "number", default: 1 },
         suave: { type: "number", default: 0 },
+        redondeo: { type: "number", default: -1 },
       },
       init: function () {
         const T = AFRAME.THREE;
@@ -23667,8 +23669,9 @@ var qrcode = function() {
         if ("colorSpace" in tex && T.SRGBColorSpace) tex.colorSpace = T.SRGBColorSpace;
         else if ("encoding" in tex && T.sRGBEncoding) tex.encoding = T.sRGBEncoding;
         const opciones = { map: tex, side: T.DoubleSide };
-        if (this.data.suave > 0) {
-          const mascara = new T.CanvasTexture(mascaraCanvas(this.data.h / this.data.w, this.data.suave));
+        if (this.data.suave > 0 || this.data.redondeo > 0) {
+          const mascara = new T.CanvasTexture(mascaraCanvas(this.data.h / this.data.w, this.data.suave, false,
+                                                          this.data.redondeo < 0 ? undefined : this.data.redondeo));
           mascara.minFilter = T.LinearFilter;
           opciones.alphaMap = mascara;
           opciones.transparent = true;
@@ -24143,7 +24146,7 @@ var qrcode = function() {
       const rot = num(c.rotacion, 0);
       const url = c.archivo ? paquete.url(c.archivo) : null;
 
-      const suave = Math.max(0, Math.min(0.45, num(c.suave, 0.12)));
+      const suave = Math.max(0, Math.min(0.5, num(c.suave, 0.2)));
 
       if (c.tipo === "ordenar") {
         const w = num(c.escala, 1), h = w * num(l.proporcion, 1);
@@ -24167,7 +24170,7 @@ var qrcode = function() {
         const { w, h } = medidas(l, c);
         contenido = crear("a-entity", {
           "ra-video": (c.tipo === "video" ? `id: ra-medio-${i}` : `src: ${url}`) +
-                      `; w: ${w}; h: ${h}; suave: ${suave}`,
+                      `; w: ${w}; h: ${h}; suave: ${suave}; redondeo: ${num(c.redondeo, 0.1)}`,
           position: `${dx} ${dy} ${0.002 + dz}`, rotation: `0 0 ${rot}`,
         }, ancla);
       } else if (c.tipo === "modelo" && url) {
@@ -24281,7 +24284,7 @@ var qrcode = function() {
 </head>
 <body>
 <header class="barra">
-  <a class="marca" href="index.html"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxNDM0NWYiLz48cGF0aCBkPSJNMTIgMjJWMTJoMTBNNDIgMTJoMTB2MTBNNTIgNDJ2MTBINDJNMjIgNTJIMTJWNDIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2YxYjgwZiIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNXYxNUwzMiA0OCAxOSA0MC41di0xNXoiIGZpbGw9IiMzYThlZTYiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNSAzMiAzMyAxOSAyNS41eiIgZmlsbD0iIzhjYzRmZiIvPjxwYXRoIGQ9Ik0zMiAzM3YxNWwxMy03LjV2LTE1eiIgZmlsbD0iIzFmNWZhOCIvPjwvc3ZnPgo=" alt="">RA · IPESfa</a>
+  <a class="marca" href="index.html"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxNDM0NWYiLz48cGF0aCBkPSJNMTIgMjJWMTJoMTBNNDIgMTJoMTB2MTBNNTIgNDJ2MTBINDJNMjIgNTJIMTJWNDIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2YxYjgwZiIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNXYxNUwzMiA0OCAxOSA0MC41di0xNXoiIGZpbGw9IiMzYThlZTYiLz48cGF0aCBkPSJNMzIgMTggNDUgMjUuNSAzMiAzMyAxOSAyNS41eiIgZmlsbD0iIzhjYzRmZiIvPjxwYXRoIGQ9Ik0zMiAzM3YxNWwxMy03LjV2LTE1eiIgZmlsbD0iIzFmNWZhOCIvPjwvc3ZnPgo=" alt="">RA · Aula</a>
   <nav><a href="index.html">Inicio</a><a href="visor-un-archivo.html">Ver</a><a href="creador-un-archivo.html" aria-current="page">Crear</a><a href="acerca.html">Acerca de</a></nav>
 </header>
 
@@ -24358,7 +24361,7 @@ var qrcode = function() {
 <div id="ra-escaneo" class="ra-escaneo oculto"><div class="mira"></div>Apuntá la cámara a la lámina</div>
 <div id="ra-cargando" class="ra-cargando oculto"><div><div class="rueda"></div>Preparando la cámara…</div></div>
 
-<footer class="pie" id="pie">Sistema de realidad aumentada del IPES "Florentino Ameghino" · Ushuaia · <a href="acerca.html">Gustavo Iturriz · software libre</a></footer>
+<footer class="pie" id="pie">Realidad aumentada para el aula · <a href="acerca.html">Gustavo Iturriz · software libre</a></footer>
 
 <template id="tpl-lamina">
   <section class="tarjeta lamina">
@@ -24436,7 +24439,8 @@ var qrcode = function() {
           <label class="campo">Mover ↕<input type="range" class="dy" min="-1" max="1" step="0.01" value="0"></label>
         </div>
         <label class="campo plano">Girar <span class="suave chico val-rot"></span><input type="range" class="rotacion" min="-180" max="180" step="5" value="0"></label>
-        <label class="campo plano solo-suave">Bordes suaves <span class="suave chico val-suavidad"></span><input type="range" class="suavidad" min="0" max="0.4" step="0.02" value="0.12"></label>
+        <label class="campo plano solo-suave">Bordes suaves <span class="suave chico val-suavidad"></span><input type="range" class="suavidad" min="0" max="0.5" step="0.02" value="0.2"></label>
+        <label class="campo plano solo-suave">Esquinas redondeadas <span class="suave chico val-redondeo"></span><input type="range" class="redondeo" min="0" max="0.5" step="0.02" value="0.1"></label>
         <label class="campo">Al tocarlo, abrir este enlace <span class="suave chico" style="font-weight:400">(opcional)</span>
           <input type="text" class="enlace" placeholder="https://..." inputmode="url"></label>
         <label class="campo m3d oculto">Elevar sobre la lámina<input type="range" class="dz" min="0" max="1" step="0.02" value="0"></label>
@@ -24503,7 +24507,7 @@ var qrcode = function() {
     const L = {
       nodo, imagen: null,
       contenido: null, // { tipo, blob, url, nombreArchivo, proporcion }
-      ajustes: { ajuste: "imagen", escala: 1, dx: 0, dy: 0, dz: 0, rotacion: 0, orientacion: "mesa", girar: true, repetir: true, sonido: true, suavidad: 0.12, enlace: "",
+      ajustes: { ajuste: "imagen", escala: 1, dx: 0, dy: 0, dz: 0, rotacion: 0, orientacion: "mesa", girar: true, repetir: true, sonido: true, suavidad: 0.2, redondeo: 0.1, enlace: "",
                  juego: "mostrar", piezas: "3x3", pista: true, mensaje: "¡Muy bien!", palabras: "", direccion: "columna" },
       calidad: null,
     };
@@ -24552,7 +24556,7 @@ var qrcode = function() {
       const f = e.target.files[0]; e.target.value = "";
       if (f) await ponerContenido(L, f, f.name);
     };
-    const ctrl = ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "girar", "repetir", "sonido", "suavidad", "enlace",
+    const ctrl = ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "girar", "repetir", "sonido", "suavidad", "redondeo", "enlace",
                   "juego", "piezas", "pista", "mensaje", "palabras", "direccion"];
     ctrl.forEach((k) => {
       const el = q("." + k);
@@ -24618,8 +24622,8 @@ var qrcode = function() {
   function sincronizarControles(L) {
     const q = (s) => $(s, L.nodo);
     const a = L.ajustes, c = L.contenido;
-    ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "suavidad", "enlace",
-     "juego", "piezas", "mensaje", "palabras", "direccion"].forEach((k) => { q("." + k).value = a[k]; });
+    ["ajuste", "escala", "dx", "dy", "dz", "rotacion", "orientacion", "suavidad", "redondeo", "enlace",
+     "juego", "piezas", "mensaje", "palabras", "direccion", "redondeo"].forEach((k) => { q("." + k).value = a[k]; });
     ["girar", "repetir", "sonido", "pista"].forEach((k) => { q("." + k).checked = !!a[k]; });
     const tipo = c ? c.tipo : null;
     q(".ajustes").classList.toggle("oculto", !tipo);
@@ -24652,7 +24656,8 @@ var qrcode = function() {
     q(".cambiar-imagen").classList.toggle("oculto", !L.imagen);
     q(".val-escala").textContent = Math.round(L.ajustes.escala * 100) + "%";
     q(".val-rot").textContent = L.ajustes.rotacion + "°";
-    q(".val-suavidad").textContent = L.ajustes.suavidad > 0 ? Math.round(L.ajustes.suavidad * 250) + "%" : "sin suavizar";
+    q(".val-suavidad").textContent = L.ajustes.suavidad > 0 ? Math.round(L.ajustes.suavidad * 200) + "%" : "sin suavizar";
+    q(".val-redondeo").textContent = L.ajustes.redondeo > 0 ? Math.round(L.ajustes.redondeo * 200) + "%" : "en punta";
     const cal = q(".calidad");
     if (L.calidad) {
       cal.className = "calidad " + L.calidad.nivel;
@@ -24730,8 +24735,8 @@ var qrcode = function() {
       grilla.dataset.grilla = "1";
       previa.appendChild(grilla);
     }
-    if (!juega && (c.tipo === "video" || c.tipo === "imagen") && a.suavidad > 0 && window.EscenaRA && EscenaRA.mascaraCanvas) {
-      const m = EscenaRA.mascaraCanvas(h / w, a.suavidad, true).toDataURL();
+    if (!juega && (c.tipo === "video" || c.tipo === "imagen") && (a.suavidad > 0 || a.redondeo > 0) && window.EscenaRA && EscenaRA.mascaraCanvas) {
+      const m = EscenaRA.mascaraCanvas(h / w, a.suavidad, true, a.redondeo).toDataURL();
       el.style.webkitMaskImage = "url(" + m + ")";
       el.style.maskImage = "url(" + m + ")";
       el.style.webkitMaskSize = "100% 100%";
@@ -24848,7 +24853,7 @@ var qrcode = function() {
     }
     const juega = t === "imagen" && a.juego === "rompecabezas";
     if (t === "video" || t === "imagen") Object.assign(base, { ajuste: a.ajuste, rotacion: a.rotacion });
-    if ((t === "video" || t === "imagen") && !juega) base.suave = a.suavidad;
+    if ((t === "video" || t === "imagen") && !juega) { base.suave = a.suavidad; base.redondeo = a.redondeo; }
     if (juega) {
       const [cols, filas] = a.piezas.split("x").map(Number);
       Object.assign(base, { juego: "rompecabezas", cols, filas, pista: a.pista, mensaje: (a.mensaje || "¡Muy bien!").trim() });

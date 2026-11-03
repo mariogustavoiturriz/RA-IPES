@@ -140,7 +140,7 @@
      hacia afuera. La calculamos píxel por píxel en vez de usar el desenfoque del
      navegador, porque varios Android no lo tienen y el borde salía duro.
      Se usa igual en la escena y en la vista previa del creador. */
-  function mascaraCanvas(aspecto, suavidad, conAlfa) {
+  function mascaraCanvas(aspecto, suavidad, conAlfa, redondeo) {
     const W = 192;
     const H = Math.max(16, Math.round(W * (aspecto || 1)));
     const c = document.createElement("canvas");
@@ -148,9 +148,10 @@
     const g = c.getContext("2d");
     const img = g.createImageData(W, H);
     const px = img.data;
-    const s = Math.max(0, Math.min(0.45, suavidad || 0));
-    const banda = Math.max(1, Math.min(W, H) * s * 0.5);   // ancho del desvanecido
-    const radio = banda * 0.9;                             // esquinas redondeadas
+    const s = Math.max(0, Math.min(0.5, suavidad || 0));
+    const r = redondeo === undefined || redondeo === null ? s * 0.9 : Math.max(0, Math.min(0.5, redondeo));
+    const banda = Math.max(0.75, Math.min(W, H) * s);      // ancho del desvanecido
+    const radio = Math.min(Math.min(W, H) * r, Math.min(W, H) / 2 - 1);  // esquinas redondeadas
     const mx = W / 2, my = H / 2;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -181,6 +182,7 @@
         id: { type: "string" }, src: { type: "string" },
         w: { type: "number", default: 1 }, h: { type: "number", default: 1 },
         suave: { type: "number", default: 0 },
+        redondeo: { type: "number", default: -1 },
       },
       init: function () {
         const T = AFRAME.THREE;
@@ -198,8 +200,9 @@
         if ("colorSpace" in tex && T.SRGBColorSpace) tex.colorSpace = T.SRGBColorSpace;
         else if ("encoding" in tex && T.sRGBEncoding) tex.encoding = T.sRGBEncoding;
         const opciones = { map: tex, side: T.DoubleSide };
-        if (this.data.suave > 0) {
-          const mascara = new T.CanvasTexture(mascaraCanvas(this.data.h / this.data.w, this.data.suave));
+        if (this.data.suave > 0 || this.data.redondeo > 0) {
+          const mascara = new T.CanvasTexture(mascaraCanvas(this.data.h / this.data.w, this.data.suave, false,
+                                                          this.data.redondeo < 0 ? undefined : this.data.redondeo));
           mascara.minFilter = T.LinearFilter;
           opciones.alphaMap = mascara;
           opciones.transparent = true;
@@ -674,7 +677,7 @@
       const rot = num(c.rotacion, 0);
       const url = c.archivo ? paquete.url(c.archivo) : null;
 
-      const suave = Math.max(0, Math.min(0.45, num(c.suave, 0.12)));
+      const suave = Math.max(0, Math.min(0.5, num(c.suave, 0.2)));
 
       if (c.tipo === "ordenar") {
         const w = num(c.escala, 1), h = w * num(l.proporcion, 1);
@@ -698,7 +701,7 @@
         const { w, h } = medidas(l, c);
         contenido = crear("a-entity", {
           "ra-video": (c.tipo === "video" ? `id: ra-medio-${i}` : `src: ${url}`) +
-                      `; w: ${w}; h: ${h}; suave: ${suave}`,
+                      `; w: ${w}; h: ${h}; suave: ${suave}; redondeo: ${num(c.redondeo, 0.1)}`,
           position: `${dx} ${dy} ${0.002 + dz}`, rotation: `0 0 ${rot}`,
         }, ancla);
       } else if (c.tipo === "modelo" && url) {

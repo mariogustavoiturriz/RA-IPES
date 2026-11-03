@@ -1,4 +1,4 @@
-# Realidad aumentada · IPESfa
+# Realidad aumentada para el aula
 
 Sistema libre para crear y ver experiencias de realidad aumentada (estilo Artivive / Aumentaty) desde el navegador. No usa servidor, ni cuentas, ni instalación.
 

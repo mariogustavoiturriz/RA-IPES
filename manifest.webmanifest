@@ -1,6 +1,6 @@
 {
-  "name": "Realidad aumentada · IPESfa",
-  "short_name": "RA IPESfa",
+  "name": "Realidad aumentada para el aula",
+  "short_name": "RA Aula",
   "start_url": "index.html",
   "scope": "./",
   "display": "standalone",

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Acerca de · RA IPESfa</title>
+<title>Acerca de · RA Aula</title>
 <meta name="theme-color" content="#14345f">
 <link rel="icon" href="img/icono.svg">
 <link rel="manifest" href="manifest.webmanifest">
@@ -27,10 +27,15 @@
   .creditos li { margin-bottom: 6px; }
 </style>
 <script src="js/archivos.js"></script>
+<script>
+  /* Dirección para recibir sugerencias. Si la dejás vacía, la página igual ofrece
+     el enlace al repositorio cuando el sitio está publicado en GitHub Pages. */
+  var CORREO_SUGERENCIAS = "";
+</script>
 </head>
 <body>
 <header class="barra">
-  <a class="marca" href="index.html"><img src="img/icono.svg" alt="">RA · IPESfa</a>
+  <a class="marca" href="index.html"><img src="img/icono.svg" alt="">RA · Aula</a>
   <nav><a href="index.html">Inicio</a><a href="visor.html">Ver</a><a href="creador.html">Crear</a><a href="acerca.html" aria-current="page">Acerca de</a></nav>
 </header>
 
@@ -41,7 +46,7 @@
   <section class="tarjeta">
     <dl class="ficha">
       <dt>Autoría</dt><dd><b>Gustavo Iturriz</b></dd>
-      <dt>Institución</dt><dd>IPES "Florentino Ameghino" · Ushuaia, Tierra del Fuego</dd>
+      <dt>Lugar</dt><dd>Ushuaia, Tierra del Fuego, Argentina</dd>
       <dt>Versión</dt><dd id="version">—</dd>
       <dt>Año</dt><dd>2026</dd>
     </dl>
@@ -68,14 +73,20 @@
     <p class="chico suave" style="margin-bottom:0">Las licencias de esas bibliotecas se respetan tal como están: son libres y permiten este uso.</p>
   </div>
 
-  <h2>Para qué lo hice </h2>
+  <h2>Sugerencias y mejoras</h2>
+  <div class="tarjeta" id="caja-sugerencias">
+    <p style="margin-top:0">Si encontrás algo que no anda, se te ocurre una actividad nueva o querés usarlo en tu escuela y necesitás una mano, escribime. Esto se mejora con lo que va apareciendo en las aulas.</p>
+    <div class="fila" id="vias-sugerencias"></div>
+  </div>
+
+  <h2>Para qué lo hice</h2>
   <div class="tarjeta">
     <p style="margin-top:0">Las herramientas que se usan para esto en el aula son pagas, hay que abrir cuenta, y el material que armás queda guardado en el servidor de otro. Si cierran o cambian las condiciones, la escuela pierde todo lo que hizo.</p>
     <p style="margin-bottom:0">Acá cada experiencia es un archivo que te guardás vos. El programa se copia y se publica donde quieras, y anda sin conexión. Si algún día dejo de ocuparme de esto, lo que armaron los docentes y los estudiantes les sigue funcionando igual.</p>
   </div>
 </main>
 
-<footer class="pie">Sistema de realidad aumentada del IPES "Florentino Ameghino" · Ushuaia · <span class="copyleft" style="font-size:16px">&copy;</span> Gustavo Iturriz · Software libre</footer>
+<footer class="pie">Realidad aumentada para el aula · <span class="copyleft" style="font-size:16px">&copy;</span> Gustavo Iturriz · Software libre</footer>
 
 <div id="sin-archivos">
   <div class="caja">
@@ -91,6 +102,30 @@
 </div>
 <script>
 document.getElementById("version").textContent = (typeof VERSION_APP !== "undefined" ? VERSION_APP : "—");
+
+/* Armamos los enlaces para mandar sugerencias. Si el sitio está publicado en
+   GitHub Pages, deducimos solos la dirección del repositorio. */
+(function () {
+  const vias = document.getElementById("vias-sugerencias");
+  const partes = [];
+  if (typeof CORREO_SUGERENCIAS === "string" && CORREO_SUGERENCIAS) {
+    partes.push('<a class="btn primario" href="mailto:' + CORREO_SUGERENCIAS +
+      '?subject=' + encodeURIComponent("Realidad aumentada para el aula") + '">✉️ Escribirme</a>');
+  }
+  const h = location.hostname;
+  if (/\.github\.io$/i.test(h)) {
+    const usuario = h.replace(/\.github\.io$/i, "");
+    const primera = location.pathname.split("/").filter(Boolean)[0];
+    const repo = (primera && !/\.html?$/i.test(primera)) ? primera : h;
+    const url = "https://github.com/" + usuario + "/" + repo + "/issues/new";
+    partes.push('<a class="btn" href="' + url + '" target="_blank" rel="noopener">🐞 Contar un problema o proponer algo</a>');
+  }
+  if (!partes.length) {
+    vias.innerHTML = '<span class="chico suave">Para habilitar el contacto, poné una dirección de correo en la primera línea de <code>acerca.html</code>.</span>';
+  } else {
+    vias.innerHTML = partes.join("");
+  }
+})();
 /* Si los archivos de la carpeta no se cargaron, mostramos el aviso en vez de una página muerta. */
 window.addEventListener("load", function () {
   var jsOk = (typeof VERSION_APP !== "undefined");

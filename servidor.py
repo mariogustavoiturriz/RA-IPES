@@ -34,7 +34,7 @@ def armar_certificado(ip):
     print("Generando el certificado (solo la primera vez)...")
     subprocess.run([
         "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "3650",
-        "-keyout", CLAVE, "-out", CERT, "-subj", "/CN=RA IPESfa",
+        "-keyout", CLAVE, "-out", CERT, "-subj", "/CN=RA Aula",
         "-addext", f"subjectAltName=IP:{ip},IP:127.0.0.1,DNS:localhost",
     ], check=True, capture_output=True)
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     ctx.load_cert_chain(CERT, CLAVE)
     srv = Servidor(("0.0.0.0", PUERTO), Manejador)
     srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
-    print("\n  Sistema de realidad aumentada - IPESfa")
+    print("\n  Realidad aumentada para el aula")
     print("  " + "-" * 44)
     print(f"  En esta notebook:   https://localhost:{PUERTO}/")
     print(f"  En los celulares:   https://{ip}:{PUERTO}/")
