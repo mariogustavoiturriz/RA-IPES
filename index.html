@@ -31,6 +31,7 @@
   #qr svg { width: 200px; height: 200px; background: #fff; border-radius: 8px; }
 </style>
 <script src="js/archivos.js"></script>
+<script src="js/contador.js"></script>
 <script src="lib/jszip.min.js"></script>
 <script src="lib/qrcode.js"></script>
 </head>
@@ -52,12 +53,63 @@
     <img src="ejemplos/lamina-1-geometria.jpg" alt="Lámina de ejemplo">
   </section>
 
-  <h2>¿Cómo funciona?</h2>
-  <div class="grilla">
-    <div class="tarjeta opcion"><span class="ico">🖼️</span><h3>1. Creás</h3><p class="suave" style="margin:0">En el creador elegís la imagen de la lámina y lo que querés que aparezca encima. Se genera un paquete .zip.</p></div>
-    <div class="tarjeta opcion"><span class="ico">📦</span><h3>2. Compartís</h3><p class="suave" style="margin:0">El .zip se pasa como cualquier archivo: Drive, mail, WhatsApp, pendrive o el aula virtual. Las láminas se imprimen o se proyectan.</p></div>
-    <div class="tarjeta opcion"><span class="ico">📱</span><h3>3. Lo ven</h3><p class="suave" style="margin:0">Abren el visor, eligen el .zip y apuntan la cámara a la lámina. Funciona en celulares Android, iPhone y notebooks con cámara.</p></div>
-  </div>
+  <section id="guia">
+    <h2>Cómo armo una, paso a paso</h2>
+    <p class="suave" style="margin-top:-4px">Si es tu primera vez, seguí estos siete pasos y en veinte minutos tenés la tuya andando. No hace falta saber programar.</p>
+
+    <div class="tarjeta" style="margin-bottom:14px">
+      <h3 style="margin-top:0">Antes de arrancar, juntá dos cosas</h3>
+      <p style="margin:0 0 8px"><b>La lámina.</b> Es la imagen que después vas a imprimir o mostrar en una pantalla, y a la que le vas a apuntar con la cámara. Puede ser un afiche, una foto, un dibujo tuyo, la tapa de un libro.</p>
+      <p style="margin:0"><b>Lo que aparece encima.</b> Un video, una foto, un dibujo, un modelo 3D o un audio. También podés armar un rompecabezas o una actividad de ordenar, y para esas no necesitás nada más que la lámina.</p>
+    </div>
+
+    <ol class="pasos-guia">
+      <li>
+        <h3>Entrá a Crear y cargá la lámina</h3>
+        <p>Tocá <b>Elegí la imagen de la lámina</b> y buscala en tu compu. Apenas la cargás, mirá el cartelito que aparece al lado del número: si dice que se reconoce bien, seguí tranquila. Si sale en rojo, esa imagen tiene poco dibujo y a la cámara le va a costar encontrarla: cambiala por una con más detalle y más contraste.</p>
+      </li>
+      <li>
+        <h3>Elegí qué querés que aparezca</h3>
+        <p>Con <b>Elegir archivo</b> ponés el video, la foto, el modelo 3D o el audio. Si elegís una foto, abajo te pregunta si la mostramos tal cual o si la partimos en piezas para armar un rompecabezas. Si lo que querés es una actividad de ordenar, usá los botones <b>Ordenar palabras</b> u <b>Ordenar imágenes</b> en vez de elegir archivo.</p>
+      </li>
+      <li>
+        <h3>Acomodalo mirando la vista previa</h3>
+        <p>Con los controles de la derecha cambiás el tamaño, lo movés, lo girás y le suavizás los bordes. Todo lo que tocás se ve al instante sobre la lámina, así que no hay que adivinar: lo que ves ahí es lo que vas a ver después con la cámara.</p>
+      </li>
+      <li>
+        <h3>Si querés más de una lámina, agregala</h3>
+        <p>Con <b>Agregar otra lámina</b> sumás todas las que quieras en la misma experiencia. Una sola recomendación: que sean bien distintas entre sí. Si usás varias muy parecidas, la cámara se confunde y te muestra la que no es.</p>
+      </li>
+      <li>
+        <h3>Generá la experiencia</h3>
+        <p>Tocá <b>Generar experiencia</b>. La computadora analiza cada lámina para poder reconocerla después; tarda unos segundos por lámina. No cierres la pestaña mientras trabaja.</p>
+      </li>
+      <li>
+        <h3>Probala con la cámara</h3>
+        <p>Tocá <b>Probar con la cámara</b>, aceptá el permiso y apuntá a la lámina. La podés tener impresa o mostrarla en otra pantalla, lo mismo da. Si algo no te gusta, salí, cambialo y generá de nuevo.</p>
+      </li>
+      <li>
+        <h3>Descargala y compartila</h3>
+        <p>Tocá <b>Descargar paquete</b> y te baja un archivo .zip: esa es tu experiencia entera. Se la pasás a quien quieras por mail, Drive, WhatsApp o pendrive, y esa persona la abre desde <b>Ver</b>. Si además la publicás, el creador te arma un QR y una hoja para imprimir con la lámina y el código al lado.</p>
+      </li>
+    </ol>
+
+    <div class="tarjeta">
+      <h3 style="margin-top:0">Para que salga bien</h3>
+      <ul style="margin:0">
+        <li>Láminas con mucho dibujo, bordes y colores. Las imágenes lisas o muy parejas no se reconocen.</li>
+        <li>Evitá las imágenes simétricas: la cámara necesita distinguir qué lado es cuál.</li>
+        <li>Si la imprimís, mejor en papel mate: el brillo molesta.</li>
+        <li>Videos cortos y livianos, en MP4. Si pesa más de 30 MB, conviene achicarlo.</li>
+        <li>Modelos 3D en formato .glb, que es un solo archivo.</li>
+      </ul>
+    </div>
+
+    <div class="fila no-imprimir" style="margin-top:14px">
+      <a class="btn primario grande" href="creador.html">✏️ Empezar a crear</a>
+      <button class="btn" onclick="window.print()">🖨️ Imprimir esta guía</button>
+    </div>
+  </section>
 
   <div class="grilla" style="margin-top:14px">
     <section class="tarjeta" id="caja-kit">
@@ -80,7 +132,7 @@
     </section>
   </div>
 </main>
-<footer class="pie">Realidad aumentada para el aula · <a href="acerca.html">Gustavo Iturriz · software libre</a></footer>
+<footer class="pie"><span class="oculto"><b data-contador>0</b> visitas · </span>Realidad aumentada para el aula · <a href="acerca.html">Gustavo Iturriz · software libre</a></footer>
 <script>
 (function () {
   "use strict";

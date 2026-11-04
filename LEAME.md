@@ -55,6 +55,16 @@ El visor y el paquete no tienen por qué estar en el mismo lugar, ni pertenecer 
 - El visor abre el QR de cualquier sitio. Si ese sitio no permite la descarga cruzada, el visor manda al visor de esa persona en vez de fallar.
 - **Instalado en el celular**, el visor aparece en el menú de compartir de Android: un `.zip` que llegue por WhatsApp, mail o Drive se abre tocando Compartir y eligiendo la aplicación. Sin hosting de por medio.
 
+## Contador de visitas
+
+Un sitio estático no puede contar visitas por sí solo. Hay tres caminos:
+
+1. **Sin tocar nada.** GitHub ya lleva la cuenta: en el repositorio, *Insights → Traffic*, están las visitas y los visitantes únicos de los últimos 14 días. No se publica en la página, lo ves solo vos.
+2. **Contador propio** (recomendado si querés mostrarlo en la página). Está todo en `contador-worker.js`: se monta gratis en Cloudflare Workers, son diez minutos, es tuyo y no guarda ningún dato de quien visita. Después se pone la dirección en `js/contador.js`.
+3. Un contador de terceros. Es una línea, pero agrega una dependencia que puede desaparecer y que recibe datos de quienes entran. No lo recomiendo para este proyecto.
+
+Mientras `CONTADOR_URL` esté vacío no se muestra nada y todo funciona igual.
+
 ## Uso sin internet
 
 **En el aula, sin internet.** Correr `python3 servidor.py` en la notebook: sirve la carpeta por `https://` en la red Wi-Fi y los celulares entran a la dirección que muestra. Los `.zip` que se dejen en `experiencias/` aparecen solos en la galería, sin editar `lista.json`.
