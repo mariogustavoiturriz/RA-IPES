@@ -13,6 +13,9 @@ var ARCHIVOS_APP = [
 ];
 /* Estos no se guardan para usar sin conexión en el celular (pesan mucho y no hacen falta ahí),
    pero sí van en el kit que se descarga para la notebook. */
-var ARCHIVOS_KIT_EXTRA = ["visor-un-archivo.html", "creador-un-archivo.html", "servidor.py", "herramientas-armar-un-archivo.py", "contador-worker.js"];
-var VERSION_APP = "2.6.0";
+/* sw.js va en el kit pero no en la lista de arriba: el service worker no debe
+   guardarse a sí mismo en la caché, porque ahí queda pegado y no se actualiza. */
+var ARCHIVOS_KIT_EXTRA = ["sw.js", "visor-un-archivo.html", "creador-un-archivo.html",
+                          "servidor.py", "herramientas-armar-un-archivo.py", "contador-worker.js"];
+var VERSION_APP = "2.6.1";
 if (typeof self !== "undefined") self.ARCHIVOS_APP = ARCHIVOS_APP;
