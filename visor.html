@@ -4,19 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Visor RA · Aula</title>
-<meta name="theme-color" content="#14345f">
+<meta name="theme-color" content="#1a2c3a">
 <link rel="icon" href="img/icono.svg">
 <link rel="manifest" href="manifest.webmanifest">
 <style>
   /* Estilos mínimos escritos acá adentro: si el navegador no puede cargar los archivos
      de la carpeta (pasa en los celulares), al menos se lee el aviso de abajo. */
-  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: #faf7f0; color: #1d2430; line-height: 1.5; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: #f2f6f8; color: #2c3e50; line-height: 1.5; }
   .oculto { display: none !important; }
   #sin-archivos { display: none; max-width: 660px; margin: 0 auto; padding: 22px 16px; }
-  #sin-archivos .caja { background: #fff; border: 1px solid #e3ded2; border-radius: 14px; padding: 18px; }
+  #sin-archivos .caja { background: #fff; border: 1px solid #d5dde5; border-radius: 14px; padding: 18px; }
   #sin-archivos h2 { font-size: 21px; margin: 0 0 10px; }
   #sin-archivos li { margin-bottom: 10px; }
-  #sin-archivos code { background: #f0ece2; padding: 1px 5px; border-radius: 4px; }
+  #sin-archivos code { background: #eaf4fb; padding: 1px 5px; border-radius: 4px; }
 </style>
 <link rel="stylesheet" href="css/estilo.css">
 <script src="lib/aframe.min.js"></script>
@@ -402,7 +402,7 @@
 window.addEventListener("load", function () {
   var jsOk = (typeof JSZip !== "undefined");
   var barra = document.querySelector("header.barra");
-  var cssOk = barra && getComputedStyle(barra).backgroundColor === "rgb(20, 52, 95)";
+  var cssOk = barra && getComputedStyle(barra).backgroundColor !== "rgba(0, 0, 0, 0)";
   if (jsOk && cssOk) return;
   var sin = document.getElementById("sin-archivos");
   document.querySelectorAll("main, header, footer").forEach(function (e) { e.style.display = "none"; });

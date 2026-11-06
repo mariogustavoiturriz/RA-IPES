@@ -17,5 +17,5 @@ var ARCHIVOS_APP = [
    guardarse a sí mismo en la caché, porque ahí queda pegado y no se actualiza. */
 var ARCHIVOS_KIT_EXTRA = ["sw.js", "visor-un-archivo.html", "creador-un-archivo.html",
                           "servidor.py", "herramientas-armar-un-archivo.py", "contador-worker.js"];
-var VERSION_APP = "2.6.1";
+var VERSION_APP = "2.7.0";
 if (typeof self !== "undefined") self.ARCHIVOS_APP = ARCHIVOS_APP;
